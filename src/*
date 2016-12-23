@@ -1,0 +1,20 @@
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+module Main where
+
+import           ClassyPrelude
+import           Data.Text        as T
+import           System.Clipboard as Clip
+
+
+type ClipHistory = Vector Text
+
+main :: IO ()
+main = do
+  let h = mempty :: ClipHistory
+  clip <- T.decodeUtf8 . fromMaybe mempty <$> Clip.getClipboardString
+
+  print (h <> clip)

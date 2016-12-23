@@ -1,0 +1,26 @@
+name:                mclip
+version:             0.1.0.0
+synopsis:            Simple project template from stack
+description:         Please see README.md
+homepage:            https://github.com/githubuser/mclip#readme
+license:             BSD3
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2016 Author name here
+category:            Web
+extra-source-files:
+- README.md
+
+dependencies:
+  - base >= 4.7 && < 5
+  - classy-prelude
+  - Clipboard
+  - text
+  - vector
+  - binary
+
+
+executables:
+  mclip:
+    source-dirs:      src
+    main:             Main.hs
