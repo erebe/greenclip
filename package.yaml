@@ -18,6 +18,10 @@ dependencies:
   - text
   - vector
   - binary
+  - microlens
+  - microlens-mtl
+  - microlens-th
+  # - transformers
 
 
 executables:

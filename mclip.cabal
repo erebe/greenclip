@@ -27,4 +27,7 @@ executable mclip
     , text
     , vector
     , binary
+    , microlens
+    , microlens-mtl
+    , microlens-th
   default-language: Haskell2010
