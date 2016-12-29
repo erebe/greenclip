@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ "$1" == "--version" ]
+then
+ /usr/bin/gcc $@ 
+elif [ "$1" == "" ]
+then
+ /usr/bin/gcc $@ 
+else
+ echo $*
+ /usr/bin/gcc $@ -lXrender -lxcb -lX11 -lXau -lXdmcp
+fi
