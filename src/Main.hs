@@ -10,7 +10,6 @@ module Main where
 
 import           ClassyPrelude    as CP
 import           Data.Binary      (decode, encode)
-import           Data.List        (nub)
 import qualified Data.Text        as T
 import qualified Data.Vector      as V
 import           Lens.Micro
@@ -59,7 +58,7 @@ appendH sel history =
   then return $ history
   else do
     maxLen <- view (to maxHistoryLength)
-    return $ fst . V.splitAt maxLen . fromList . nub . toList $ cons selection history
+    return $ fst . V.splitAt maxLen $ cons selection $ filter (/= selection) history
 
 runDaemon :: (MonadIO m, MonadReader Config m) => m ()
 runDaemon = getHistory >>= go
