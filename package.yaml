@@ -21,10 +21,10 @@ dependencies:
   - microlens
   - microlens-mtl
   - microlens-th
-  # - transformers
-
+  - directory
 
 executables:
   mclip:
     source-dirs:      src
+    ghc-options:      -O3
     main:             Main.hs
