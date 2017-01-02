@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude     #-}
@@ -7,7 +8,7 @@
 
 module Main where
 
-import           ClassyPrelude    as CP
+import           ClassyPrelude    as CP hiding (readFile)
 import           Data.Binary      (decode, encode)
 import qualified Data.Text        as T
 import qualified Data.Vector      as V
@@ -15,6 +16,7 @@ import           Lens.Micro
 import           Lens.Micro.Mtl
 import qualified System.Clipboard as Clip
 import qualified System.Directory as Dir
+import           System.IO        (IOMode (..), openFile)
 
 
 data Command = DAEMON | PRINT | COPY Text | HELP deriving (Show, Read)
@@ -28,6 +30,13 @@ data Config = Config
 
 type ClipHistory = Vector Text
 type CCC = ReaderT Config IO
+
+
+readFile :: IOData str => FilePath -> IO str
+readFile filepath = bracket (openFile filepath ReadMode) (hClose) $ \h -> do
+  str <- hGetContents h
+  let !str' = str
+  return str'
 
 
 getHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
@@ -47,7 +56,7 @@ getStaticHistory = do
 storeHistory :: (MonadIO m, MonadReader Config m) => ClipHistory -> m ()
 storeHistory history = do
   storePath <- view (to historyPath)
-  liftIO $ writeFile storePath (encode . toList $ history) `catchAnyDeep` (const (return ()))
+  liftIO $ writeFile storePath (encode . toList $ history) `catchAnyDeep` (const mempty)
 
 appendH :: (MonadIO m, MonadReader Config m) => Text -> ClipHistory -> m ClipHistory
 appendH sel history =
@@ -60,7 +69,7 @@ appendH sel history =
     return $ fst . V.splitAt maxLen $ cons selection $ filter (/= selection) history
 
 runDaemon :: (MonadIO m, MonadReader Config m, MonadCatch m) => m ()
-runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` print
+runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` sayErrShow
   where
     _1sec :: Int
     _1sec = 10^6
