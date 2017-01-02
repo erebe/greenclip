@@ -3,7 +3,6 @@
 {-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 
 module Main where
@@ -50,7 +49,7 @@ storeHistory history = do
   storePath <- view (to historyPath)
   liftIO $ writeFile storePath (encode . toList $ history) `catchAnyDeep` (const (return ()))
 
-appendH :: (MonadIO m, MonadReader Config m) => Text -> ClipHistory -> m (ClipHistory)
+appendH :: (MonadIO m, MonadReader Config m) => Text -> ClipHistory -> m ClipHistory
 appendH sel history =
   let selection = T.strip sel in
   if selection == mempty
@@ -60,8 +59,8 @@ appendH sel history =
     maxLen <- view (to maxHistoryLength)
     return $ fst . V.splitAt maxLen $ cons selection $ filter (/= selection) history
 
-runDaemon :: (MonadIO m, MonadReader Config m) => m ()
-runDaemon = getHistory >>= go
+runDaemon :: (MonadIO m, MonadReader Config m, MonadCatch m) => m ()
+runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` print
   where
     _1sec :: Int
     _1sec = 10^6
@@ -81,7 +80,7 @@ runDaemon = getHistory >>= go
 printHistory :: (MonadIO m, MonadReader Config m) => m ()
 printHistory = do
   history <- mappend <$> getHistory <*> getStaticHistory
-  traverse print history
+  traverse (putStrLn . T.dropEnd 1 . T.drop 1 . tshow) history
   return ()
 
 
@@ -100,7 +99,7 @@ getConfig = do
     defaultConfig home = Config 25 (home </> ".cache/mclip.history") (home </> ".cache/mclip.staticHistory")
 
 pasteSelection :: Text -> IO ()
-pasteSelection sel = Clip.setClipboardString (fromMaybe mempty (readMay sel))
+pasteSelection sel = Clip.setClipboardString (fromMaybe mempty (readMay $ "\"" <> sel <> "\""))
 
 parseArgs :: [Text] -> Command
 parseArgs ("daemon":_)     = DAEMON
