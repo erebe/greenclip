@@ -27,4 +27,5 @@ executables:
   mclip:
     source-dirs:      src
     ghc-options:      -O3
+    ld-options:       -static
     main:             Main.hs

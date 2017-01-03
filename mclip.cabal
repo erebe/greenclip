@@ -21,6 +21,7 @@ executable mclip
   hs-source-dirs:
       src
   ghc-options: -O3
+  ld-options: -static
   build-depends:
       base >= 4.7 && < 5
     , classy-prelude

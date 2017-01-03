@@ -72,7 +72,7 @@ runDaemon :: (MonadIO m, MonadReader Config m, MonadCatch m) => m ()
 runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` sayErrShow
   where
     _1sec :: Int
-    _1sec = 10^6
+    _1sec = 5 * 10^5 
 
     go history = do
       selection <- liftIO $ getSelection
