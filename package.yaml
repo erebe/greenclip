@@ -22,10 +22,12 @@ dependencies:
   - microlens-mtl
   - microlens-th
   - directory
+  - comonad
 
 executables:
   mclip:
     source-dirs:      src
-    ghc-options:      -O3
+    ghc-options:      -O3 -Wall
     ld-options:       -static
+    extra-libraries: Xrender xcb X11 Xau Xdmcp
     main:             Main.hs
