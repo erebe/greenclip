@@ -7,6 +7,10 @@
 Recyle your clipboard selections with greenclip and don't waste your time anymore
 to reselect things other and other.
 
+**Purpose :**
+Keeps track of your history of selections to quickly switch between them
+
+
 **Installation :**
 
 1. It's a static binary so drop it anywhere in your $PATH env
