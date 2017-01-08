@@ -37,7 +37,11 @@ resolver: lts-7.14
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
-- 'Clipboard'
+- location:
+   extra-dep: true
+   git: https://github.com/erebe/Clipboard.git
+   commit: HEAD
+
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps: []
