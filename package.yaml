@@ -23,8 +23,8 @@ dependencies:
   - directory
 
 executables:
-  mclip:
+  greenclip:
     source-dirs:      src
-    ghc-options:      -O3 -Wall
-    #ld-options:       -static
+    ghc-options:      -Wall -O3
+    # ld-options:       -static
     main:             Main.hs
