@@ -15,7 +15,7 @@ to reselect things other and other.
 
 **Usage :**
 
-Greenclip is intended to be use with [rofi](https://github.com/DaveDavenport/rofi)
+Greenclip is intended to be used with [rofi](https://github.com/DaveDavenport/rofi)
 
 1. Spawn the daemon ``` greenclip daemon ```
 2. When ever you need to get your selections history ``` rofi -modi "clipboard:greenclip print" -show clipboard ```
