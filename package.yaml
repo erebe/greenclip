@@ -20,12 +20,11 @@ dependencies:
   - binary
   - microlens
   - microlens-mtl
-  - microlens-th
   - directory
 
 executables:
   mclip:
     source-dirs:      src
     ghc-options:      -O3 -Wall
-    ld-options:       -static
+    #ld-options:       -static
     main:             Main.hs

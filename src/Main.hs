@@ -94,7 +94,7 @@ printHistory = do
 getConfig :: IO Config
 getConfig = do
   home <- Dir.getHomeDirectory
-  let cfgPath = home </> ".config/mclip.cfg"
+  let cfgPath = home </> ".config/greenclip.cfg"
 
   cfgStr <- readFile cfgPath `catchAnyDeep` const mempty :: IO Text
   let cfg = fromMaybe (defaultConfig home) (readMay cfgStr)
@@ -103,7 +103,7 @@ getConfig = do
   return cfg
 
   where
-    defaultConfig home = Config 25 (home </> ".cache/mclip.history") (home </> ".cache/mclip.staticHistory")
+    defaultConfig home = Config 15 (home </> ".cache/greenclip.history") (home </> ".cache/greenclip.staticHistory")
 
 pasteSelection :: Text -> IO ()
 pasteSelection sel = Clip.setClipboardString (fromMaybe mempty (readMay $ "\"" <> sel <> "\""))
@@ -121,7 +121,8 @@ run cmd = do
     DAEMON   -> runReaderT runDaemon cfg
     PRINT    -> runReaderT printHistory cfg
     COPY sel -> pasteSelection sel
-    HELP     -> putStrLn "HELP"
+    HELP     -> putStrLn "daemon: to spawn the daemon that will listen to selections\n" <>
+                         "print: To display all selections history"
 
 main :: IO ()
 main = do
