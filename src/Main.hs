@@ -121,8 +121,8 @@ run cmd = do
     DAEMON   -> runReaderT runDaemon cfg
     PRINT    -> runReaderT printHistory cfg
     COPY sel -> pasteSelection sel
-    HELP     -> putStrLn "daemon: to spawn the daemon that will listen to selections\n" <>
-                         "print: To display all selections history"
+    HELP     -> putStrLn $ "daemon: to spawn the daemon that will listen to selections\n" <>
+                           "print: To display all selections history"
 
 main :: IO ()
 main = do
