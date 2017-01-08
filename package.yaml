@@ -1,13 +1,13 @@
-name:                mclip
+name:                greenclip
 version:             0.1.0.0
-synopsis:            Simple project template from stack
+synopsis:            Simple clipboard manager to be integrated with rofi
 description:         Please see README.md
-homepage:            https://github.com/githubuser/mclip#readme
+homepage:            https://github.com/erebe/greenclip#readme
 license:             BSD3
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2016 Author name here
-category:            Web
+author:              Erèbe - Romain GERARD
+maintainer:          romain.gerard@erebe.eu
+copyright:           2016 Erèbe
+category:            Linux Desktop
 extra-source-files:
 - README.md
 
@@ -22,12 +22,10 @@ dependencies:
   - microlens-mtl
   - microlens-th
   - directory
-  - comonad
 
 executables:
   mclip:
     source-dirs:      src
     ghc-options:      -O3 -Wall
     ld-options:       -static
-    extra-libraries: Xrender xcb X11 Xau Xdmcp
     main:             Main.hs

@@ -2,15 +2,15 @@
 --
 -- see: https://github.com/sol/hpack
 
-name:           mclip
+name:           greenclip
 version:        0.1.0.0
-synopsis:       Simple project template from stack
+synopsis:       Simple clipboard manager to be integrated with rofi
 description:    Please see README.md
-category:       Web
-homepage:       https://github.com/githubuser/mclip#readme
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2016 Author name here
+category:       Linux Desktop
+homepage:       https://github.com/erebe/greenclip#readme
+author:         Erèbe - Romain GERARD
+maintainer:     romain.gerard@erebe.eu
+copyright:      2016 Erèbe
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,8 +21,6 @@ executable mclip
   hs-source-dirs:
       src
   ghc-options: -O3 -Wall
-  extra-libraries:
-      Xrender xcb X11 Xau Xdmcp
   ld-options: -static
   build-depends:
       base >= 4.7 && < 5
@@ -35,5 +33,4 @@ executable mclip
     , microlens-mtl
     , microlens-th
     , directory
-    , comonad
   default-language: Haskell2010
