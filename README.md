@@ -13,7 +13,7 @@ Keeps track of your history of selections to quickly switch between them
 
 **Installation :**
 
-1. It's a static binary so drop it anywhere in your $PATH env
+1. It's a static binary so drop it anywhere in your $PATH env ```wget https://raw.githubusercontent.com/erebe/greenclip/master/greenclip ```
 2. If you want, you can add a permanent list of selections to be added to your current history. Go see the config file
 
 
