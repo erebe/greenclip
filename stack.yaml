@@ -38,9 +38,8 @@ resolver: lts-7.14
 packages:
 - '.'
 - location:
-   extra-dep: true
-   git: https://github.com/erebe/Clipboard.git
-   commit: HEAD
+   git: https://github.com/Daniel-Diaz/Clipboard.git
+   commit: cab623c969ae150d99533fda99cce6f7582425da
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
