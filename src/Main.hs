@@ -8,15 +8,15 @@
 
 module Main where
 
-import           ClassyPrelude    as CP hiding (readFile)
-import           Data.Binary      (decode, encode)
-import qualified Data.Text        as T
-import qualified Data.Vector      as V
+import           ClassyPrelude      as CP hiding (readFile)
+import           Data.Binary        (decode, encode)
+import qualified Data.Text          as T
+import qualified Data.Vector        as V
 import           Lens.Micro
 import           Lens.Micro.Mtl
-import qualified System.Clipboard as Clip
-import qualified System.Directory as Dir
-import           System.IO        (IOMode (..), openFile)
+import qualified System.Clipboard   as Clip
+import qualified System.Directory   as Dir
+import           System.IO          (IOMode (..), openFile)
 
 
 data Command = DAEMON | PRINT | COPY Text | HELP deriving (Show, Read)
@@ -30,7 +30,7 @@ data Config = Config
 
 type ClipHistory = Vector Text
 
-readFile :: IOData str => FilePath -> IO str
+readFile :: FilePath -> IO ByteString
 readFile filepath = bracket (openFile filepath ReadMode) hClose $ \h -> do
   str <- hGetContents h
   let !str' = str
@@ -42,19 +42,19 @@ getHistory = do
   storePath <- view (to historyPath)
   liftIO $ readH storePath
   where
-    readH filePath = (readFile filePath <&> fromList . decode) `catchAnyDeep` const mempty
+    readH filePath = (readFile filePath <&> fromList . decode . fromStrict) `catchAnyDeep` const mempty
 
 getStaticHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
 getStaticHistory = do
   storePath <- view (to staticHistoryPath)
   liftIO $ readH storePath
   where
-    readH filePath = (readFile filePath <&> fromList . T.lines) `catchAnyDeep` const mempty
+    readH filePath = (readFile filePath <&> fromList . T.lines . decodeUtf8) `catchAnyDeep` const mempty
 
 storeHistory :: (MonadIO m, MonadReader Config m) => ClipHistory -> m ()
 storeHistory history = do
   storePath <- view (to historyPath)
-  liftIO $ writeFile storePath (encode . toList $ history) `catchAnyDeep` const mempty
+  liftIO $ writeFile storePath (toStrict . encode . toList $ history) `catchAnyDeep` const mempty
 
 appendH :: (MonadIO m, MonadReader Config m) => Text -> ClipHistory -> m ClipHistory
 appendH sel history =
@@ -96,10 +96,10 @@ getConfig = do
   home <- Dir.getHomeDirectory
   let cfgPath = home </> ".config/greenclip.cfg"
 
-  cfgStr <- readFile cfgPath `catchAnyDeep` const mempty :: IO Text
+  cfgStr <- (readFile cfgPath <&> decodeUtf8) `catchAnyDeep` const mempty
   let cfg = fromMaybe (defaultConfig home) (readMay cfgStr)
 
-  writeFile cfgPath (show cfg)
+  writeFile cfgPath (fromString $ show cfg)
   return cfg
 
   where
