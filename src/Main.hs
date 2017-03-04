@@ -17,6 +17,7 @@ import           Lens.Micro.Mtl
 import qualified System.Clipboard   as Clip
 import qualified System.Directory   as Dir
 import           System.IO          (IOMode (..), openFile)
+import           System.Environment          (lookupEnv)
 
 
 data Command = DAEMON | PRINT | COPY Text | HELP deriving (Show, Read)
@@ -67,7 +68,7 @@ appendH sel history =
     return $ fst . V.splitAt maxLen $ cons selection $ filter (/= selection) history
 
 runDaemon :: (MonadIO m, MonadReader Config m, MonadCatch m) => m ()
-runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` sayErrShow
+runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
   where
     _1sec :: Int
     _1sec = 5 * 10^(5::Int)
@@ -83,6 +84,13 @@ runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` sayErrShow
 
     getSelection :: IO Text
     getSelection = T.pack . fromMaybe mempty <$> Clip.getClipboardString
+
+    handleError ex = do
+      let displayMissing = "openDisplay" `T.isInfixOf` (tshow ex)
+      case displayMissing of
+        True -> error "X display not available. Please start Xorg before running greenclip" 
+        _ -> sayErrShow ex
+             
 
 printHistory :: (MonadIO m, MonadReader Config m) => m ()
 printHistory = do
@@ -126,5 +134,8 @@ run cmd = do
 
 main :: IO ()
 main = do
-  cmd <- parseArgs <$> getArgs
-  run cmd
+  displayPresent <- lookupEnv "DISPLAY"
+  case displayPresent of
+    Nothing -> putStrLn "X display not available. Please start Xorg before running greenclip"
+    _ -> do cmd <- parseArgs <$> getArgs
+            run cmd

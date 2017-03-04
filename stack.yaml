@@ -37,9 +37,7 @@ resolver: lts-8.1
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
-- location:
-   git: https://github.com/Daniel-Diaz/Clipboard.git
-   commit: cab623c969ae150d99533fda99cce6f7582425da
+- 'Clipboard'
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)

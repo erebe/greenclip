@@ -1,0 +1,55 @@
+Name:         Clipboard
+Version:      2.3.1.0
+Author:       Sævar Berg (Windows), Matthew Bekkema (X11), Daniel Díaz (Maintainer)
+Homepage:     http://haskell.org/haskellwiki/Clipboard
+License:      BSD3
+License-file: license
+Maintainer:   dhelta.diaz `at` gmail.com
+Category:     System
+Stability:    Stable
+Synopsis:     System clipboard interface.
+Bug-reports:  https://github.com/Daniel-Diaz/Clipboard/issues
+Description:    
+  /Clipboard/ is a library for easily interfacing with the system clipboard with additional unicode support.
+  Currently, only in a Windows or GNU/Linux (X11) system.
+  .
+  For example, if you type:
+  .
+  > $ setClipboardString "Hello, World!"
+  .
+  Then you have @\"Hello, World!\"@ available to be pasted wherever you want.
+  .
+  Now, if you type:
+  .
+  > $ modifyClipboardString reverse
+  .
+  You will have @\"!dlroW ,olleH\"@ in your clipboard. So:
+  .
+  > $ getClipboardString
+  > "!dlroW ,olleH"
+  .
+  The X11 version depends on the @X11@ package, so you will need the X11 development library
+  available on your system at compile time. You can install it by @sudo apt-get install libxrandr-dev@
+  (or the equivalent on your system).
+Build-type: Simple
+Cabal-version:  >= 1.6
+Extra-source-files: README.md
+
+Source-repository head
+ type: git
+ location: git://github.com/Daniel-Diaz/Clipboard.git
+
+Library
+  Exposed-modules: System.Clipboard
+  Extensions: CPP
+  if os(windows)
+    Build-depends:  base == 4.*
+                  , Win32 >= 2.2.0.0 && < 2.4
+    Other-modules:  System.Clipboard.Windows
+  else
+    Build-depends:  base == 4.*
+                  , X11 >= 1.6
+                  , utf8-string
+                  , unix
+                  , directory
+    Other-modules:  System.Clipboard.X11
