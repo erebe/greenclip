@@ -9,6 +9,7 @@
 module Main where
 
 import           ClassyPrelude      as CP hiding (readFile)
+import           System.Timeout (timeout)
 import           Data.Binary        (decode, encode)
 import qualified Data.Text          as T
 import qualified Data.Vector        as V
@@ -83,7 +84,7 @@ runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
       go history'
 
     getSelection :: IO Text
-    getSelection = T.pack . fromMaybe mempty <$> Clip.getClipboardString
+    getSelection = T.pack . fromMaybe mempty . join <$> timeout _1sec Clip.getClipboardString
 
     handleError ex = do
       let displayMissing = "openDisplay" `T.isInfixOf` (tshow ex)
