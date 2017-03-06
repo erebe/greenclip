@@ -96,7 +96,7 @@ runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
 printHistory :: (MonadIO m, MonadReader Config m) => m ()
 printHistory = do
   history <- mappend <$> getHistory <*> getStaticHistory
-  _ <- traverse (putStrLn . T.dropEnd 1 . T.drop 1 . tshow) history
+  _ <- traverse (putStrLn . T.map (\c -> if c == '\n' || c == '\r' then '\9' else c)) history
   return ()
 
 
@@ -115,7 +115,7 @@ getConfig = do
     defaultConfig home = Config 15 (home </> ".cache/greenclip.history") (home </> ".cache/greenclip.staticHistory")
 
 pasteSelection :: Text -> IO ()
-pasteSelection sel = Clip.setClipboardString (fromMaybe mempty (readMay $ "\"" <> sel <> "\""))
+pasteSelection sel = Clip.setClipboardString (T.unpack $ T.map (\c -> if c == '\9' then '\n' else c) sel)
 
 parseArgs :: [Text] -> Command
 parseArgs ("daemon":_)   = DAEMON
