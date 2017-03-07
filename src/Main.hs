@@ -144,7 +144,7 @@ run cmd = do
     -- of other people
     COPY sel -> advertiseSelection sel
     HELP     -> putStrLn $ "daemon: to spawn the daemon that will listen to selections\n" <>
-                           "print: To display all selections history" <>
+                           "print: To display all selections history\n" <>
                            "clear: Clear history"
 
 main :: IO ()
