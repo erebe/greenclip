@@ -20,6 +20,9 @@ import System.Directory         (setCurrentDirectory)
 import System.IO                (hClose, stderr, stdin, stdout)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef
+import Control.Concurrent.MVar
+import Control.Concurrent (forkIO)
+import System.Timeout     (timeout)
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
@@ -27,28 +30,34 @@ import Control.Applicative ((<$>))
 
 getClipboardString :: IO (Maybe String)
 getClipboardString = do
-    (display, window, clipboards) <- readIORef $ initialSetup
+    (display, window, clipboards) <- readIORef initialSetup
     inp <- internAtom display "clipboard_get" False
     target <- internAtom display "UTF8_STRING" True
+    holder <- newEmptyMVar :: IO (MVar String)
+    _ <- forkIO $ swpanEventLoop display window inp holder
     xConvertSelection display (head clipboards) target inp window currentTime
-    ret <- clipboardInputWait display window inp
-    return ret
+    Just <$> takeMVar holder
+  where
+    swpanEventLoop d w i h = const () <$> timeout (2 * 1000000) (clipboardInputWait d w i h)
 
-clipboardInputWait :: Display -> Window -> Atom -> IO (Maybe String)
-clipboardInputWait display window inp = do
-    ev <- getNextEvent display
+clipboardInputWait :: Display -> Window -> Atom -> MVar String -> IO ()
+clipboardInputWait display' window' inp' holder' = allocaXEvent (go display' window' inp' holder')
+  where
+  go display window inp holder evPtr = do
+    nextEvent display evPtr
+    ev <- getEvent evPtr
     if ev_event_type ev == selectionNotify
-        then fmap charsToString <$> getWindowProperty8 display inp window
-        else clipboardInputWait display window inp
+       then do
+         selection <- charsToString . fromMaybe mempty <$> getWindowProperty8 display inp window
+         putMVar holder selection
+       else go display window inp holder evPtr
 
 charsToString :: [CChar] -> String
 charsToString = decode . map fromIntegral
 
 setClipboardString :: String -> IO ()
 setClipboardString str = void $ forkProcess $ do
-        hClose stdin
-        hClose stdout
-        hClose stderr
+        mapM_ hClose [stdin, stdout, stderr]
         setCurrentDirectory "/"
         (display, window, clipboards) <- readIORef initialSetup
         mapM_ (\atom -> xSetSelectionOwner display atom window currentTime) clipboards
@@ -108,8 +117,3 @@ cleanup :: Display -> Window -> IO ()
 cleanup display window = do
     destroyWindow display window
     closeDisplay display
-
-getNextEvent :: Display -> IO Event
-getNextEvent display = allocaXEvent $ \ev -> do
-    nextEvent display ev
-    getEvent ev
