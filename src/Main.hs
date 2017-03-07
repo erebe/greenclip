@@ -9,7 +9,6 @@
 module Main where
 
 import           ClassyPrelude      as CP hiding (readFile)
-import           System.Timeout (timeout)
 import           Data.Binary        (decode, encode)
 import qualified Data.Text          as T
 import qualified Data.Vector        as V
@@ -17,18 +16,18 @@ import           Lens.Micro
 import           Lens.Micro.Mtl
 import qualified System.Clipboard   as Clip
 import qualified System.Directory   as Dir
+import           System.Environment (lookupEnv)
 import           System.IO          (IOMode (..), openFile)
-import           System.Environment          (lookupEnv)
+import           System.Timeout     (timeout)
 
 
-data Command = DAEMON | PRINT | COPY Text | HELP deriving (Show, Read)
+data Command = DAEMON | PRINT | COPY Text | CLEAR | HELP deriving (Show, Read)
 
 data Config = Config
   { maxHistoryLength  :: Int
   , historyPath       :: String
   , staticHistoryPath :: String
   } deriving (Show, Read)
-
 
 type ClipHistory = Vector Text
 
@@ -42,63 +41,75 @@ readFile filepath = bracket (openFile filepath ReadMode) hClose $ \h -> do
 getHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
 getHistory = do
   storePath <- view (to historyPath)
-  liftIO $ readH storePath
+  liftIO $ readH storePath `catchAnyDeep` const mempty
   where
-    readH filePath = (readFile filePath <&> fromList . decode . fromStrict) `catchAnyDeep` const mempty
+    readH filePath = readFile filePath <&> fromList . decode . fromStrict
 
 getStaticHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
 getStaticHistory = do
   storePath <- view (to staticHistoryPath)
-  liftIO $ readH storePath
+  liftIO $ readH storePath `catchAnyDeep` const mempty
   where
-    readH filePath = (readFile filePath <&> fromList . T.lines . decodeUtf8) `catchAnyDeep` const mempty
+    readH filePath = readFile filePath <&> fromList . T.lines . decodeUtf8
+
 
 storeHistory :: (MonadIO m, MonadReader Config m) => ClipHistory -> m ()
 storeHistory history = do
   storePath <- view (to historyPath)
-  liftIO $ writeFile storePath (toStrict . encode . toList $ history) `catchAnyDeep` const mempty
+  liftIO $ writeH storePath history `catchAnyDeep` const mempty
+  where
+    writeH storePath = writeFile storePath . toStrict . encode . toList
 
-appendH :: (MonadIO m, MonadReader Config m) => Text -> ClipHistory -> m ClipHistory
-appendH sel history =
+appendToHistory :: (MonadIO m, MonadReader Config m) => Text -> ClipHistory -> m ClipHistory
+appendToHistory sel history =
   let selection = T.strip sel in
-  if selection == mempty
-     || selection == fromMaybe mempty (headMay history)
+  if selection == mempty || selection == fromMaybe mempty (headMay history)
   then return history
   else do
     maxLen <- view (to maxHistoryLength)
-    return $ fst . V.splitAt maxLen $ cons selection $ filter (/= selection) history
+    return $ fst . V.splitAt maxLen . cons selection $ filter (/= selection) history
+
 
 runDaemon :: (MonadIO m, MonadReader Config m, MonadCatch m) => m ()
 runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
   where
-    _1sec :: Int
-    _1sec = 5 * 10^(5::Int)
+    _0_5sec :: Int
+    _0_5sec = 5 * 10^(5::Int)
 
     go history = do
       selection <- liftIO getSelection
 
-      history' <- appendH selection history
+      history' <- appendToHistory selection history
       when (history' /= history) (storeHistory history')
 
-      liftIO $ threadDelay _1sec
+      liftIO $ threadDelay _0_5sec
       go history'
 
     getSelection :: IO Text
-    getSelection = T.pack . fromMaybe mempty . join <$> timeout _1sec Clip.getClipboardString
+    getSelection = timeout _0_5sec Clip.getClipboardString <&> T.pack . fromMaybe mempty . join
 
     handleError ex = do
-      let displayMissing = "openDisplay" `T.isInfixOf` (tshow ex)
-      case displayMissing of
-        True -> error "X display not available. Please start Xorg before running greenclip" 
-        _ -> sayErrShow ex
-             
+      let displayMissing = "openDisplay" `T.isInfixOf` tshow ex
+      if displayMissing
+      then error "X display not available. Please start Xorg before running greenclip"
+      else sayErrShow ex
 
-printHistory :: (MonadIO m, MonadReader Config m) => m ()
-printHistory = do
+
+
+toRofiStr :: Text -> Text
+toRofiStr = T.map (\c -> if c == '\n' || c == '\r' then '\9' else c)
+
+fromRofiStr :: Text -> Text
+fromRofiStr = T.map (\c -> if c == '\9' then '\n' else c)
+
+printHistoryForRofi :: (MonadIO m, MonadReader Config m) => m ()
+printHistoryForRofi = do
   history <- mappend <$> getHistory <*> getStaticHistory
-  _ <- traverse (putStrLn . T.map (\c -> if c == '\n' || c == '\r' then '\9' else c)) history
+  _ <- traverse (putStrLn . toRofiStr) history
   return ()
 
+advertiseSelection :: Text -> IO ()
+advertiseSelection = Clip.setClipboardString . T.unpack . fromRofiStr
 
 getConfig :: IO Config
 getConfig = do
@@ -114,8 +125,6 @@ getConfig = do
   where
     defaultConfig home = Config 15 (home </> ".cache/greenclip.history") (home </> ".cache/greenclip.staticHistory")
 
-pasteSelection :: Text -> IO ()
-pasteSelection sel = Clip.setClipboardString (T.unpack $ T.map (\c -> if c == '\9' then '\n' else c) sel)
 
 parseArgs :: [Text] -> Command
 parseArgs ("daemon":_)   = DAEMON
@@ -128,8 +137,11 @@ run cmd = do
   cfg <- getConfig
   case cmd of
     DAEMON   -> runReaderT runDaemon cfg
-    PRINT    -> runReaderT printHistory cfg
-    COPY sel -> pasteSelection sel
+    PRINT    -> runReaderT printHistoryForRofi cfg
+    CLEAR    -> runReaderT (storeHistory mempty) cfg
+    -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
+    -- of other people
+    COPY sel -> advertiseSelection sel
     HELP     -> putStrLn $ "daemon: to spawn the daemon that will listen to selections\n" <>
                            "print: To display all selections history"
 
@@ -138,5 +150,4 @@ main = do
   displayPresent <- lookupEnv "DISPLAY"
   case displayPresent of
     Nothing -> putStrLn "X display not available. Please start Xorg before running greenclip"
-    _ -> do cmd <- parseArgs <$> getArgs
-            run cmd
+    _       -> getArgs >>= run .parseArgs
