@@ -128,6 +128,7 @@ getConfig = do
 
 parseArgs :: [Text] -> Command
 parseArgs ("daemon":_)   = DAEMON
+parseArgs ["clear"]      = CLEAR
 parseArgs ["print"]      = PRINT
 parseArgs ["print", sel] = COPY sel
 parseArgs _              = HELP
@@ -143,7 +144,8 @@ run cmd = do
     -- of other people
     COPY sel -> advertiseSelection sel
     HELP     -> putStrLn $ "daemon: to spawn the daemon that will listen to selections\n" <>
-                           "print: To display all selections history"
+                           "print: To display all selections history" <>
+                           "clear: Clear history"
 
 main :: IO ()
 main = do
