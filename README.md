@@ -15,7 +15,7 @@ Keeps track of your history of selections to quickly switch between them
 
 1. It's a static binary so drop it anywhere in your $PATH env 
 
-```wget https://github.com/erebe/greenclip/releases/download/1.0/greenclip ```
+```wget https://github.com/erebe/greenclip/releases/download/1.1/greenclip ```
 
 PS: If you want, you can add a permanent list of selections to be added to your current history. Go see the config file
 
