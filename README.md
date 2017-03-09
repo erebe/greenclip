@@ -10,6 +10,9 @@ to reselect things other and other.
 **Purpose :**
 Keeps track of your history of selections to quickly switch between them
 
+**Demo :**
+
+<video controls src="https://github.com/erebe/greenclip/releases/download/1.1/demo.webm">Video Link</video>
 
 **Installation :**
 
