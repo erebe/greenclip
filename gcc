@@ -1,12 +1,11 @@
-#!/bin/bash
+#!/bin/sh
+
+echo $@
 
 if [ "$1" == "--version" ]
 then
  /usr/bin/gcc $@ 
 elif [ "$1" == "-v" ]
-then
- /usr/bin/gcc $@ 
-elif [ "$1" == "" ]
 then
  /usr/bin/gcc $@ 
 else

@@ -8,9 +8,9 @@ synopsis:       Simple clipboard manager to be integrated with rofi
 description:    Please see README.md
 category:       Linux Desktop
 homepage:       https://github.com/erebe/greenclip#readme
-author:         Erèbe - Romain GERARD
+author:         Er*be - Romain GERARD
 maintainer:     romain.gerard@erebe.eu
-copyright:      2016 Erèbe
+copyright:      2016 Er*be
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -23,7 +23,8 @@ executable greenclip
   main-is: Main.hs
   hs-source-dirs:
       src
-  ghc-options: -Wall -O3
+  ghc-options: -Wall -O3 -static
+  ld-options: -static
   build-depends:
       base >= 4.7 && < 5
     , classy-prelude
