@@ -13,7 +13,7 @@ Keeps track of your history of selections to quickly switch between them
 **Demo :** 
 <video controls>
   <source src="https://github.com/erebe/greenclip/releases/download/1.1/demo.webm" type="video/webm">
- <a href="https://github.com/erebe/greenclip/releases/download/1.1/demo.webm">Video Link</a>
+ <a href="https://www.youtube.com/watch?v=Utk-9Gy8H3w">Video Link</a>
 </video>
 
 **Installation :**
