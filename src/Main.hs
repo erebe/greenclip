@@ -97,10 +97,10 @@ runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
 
 
 toRofiStr :: Text -> Text
-toRofiStr = T.map (\c -> if c == '\n' || c == '\r' then '\9' else c)
+toRofiStr = T.map (\c -> if c == '\n' || c == '\r' then '\xA0' else c)
 
 fromRofiStr :: Text -> Text
-fromRofiStr = T.map (\c -> if c == '\9' then '\n' else c)
+fromRofiStr = T.map (\c -> if c == '\xA0' then '\n' else c)
 
 printHistoryForRofi :: (MonadIO m, MonadReader Config m) => m ()
 printHistoryForRofi = do
