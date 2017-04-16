@@ -20,9 +20,7 @@ import System.Directory         (setCurrentDirectory)
 import System.IO                (hClose, stderr, stdin, stdout)
 import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef
-import Control.Concurrent.MVar
-import Control.Concurrent (forkIO)
-import System.Timeout     (timeout)
+import Control.Concurrent (threadDelay)
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
@@ -33,24 +31,22 @@ getClipboardString = do
     (display, window, clipboards) <- readIORef initialSetup
     inp <- internAtom display "clipboard_get" False
     target <- internAtom display "UTF8_STRING" True
-    holder <- newEmptyMVar :: IO (MVar String)
-    _ <- forkIO $ swpanEventLoop display window inp holder
     xConvertSelection display (head clipboards) target inp window currentTime
-    Just <$> takeMVar holder
-  where
-    swpanEventLoop d w i h = const () <$> timeout (2 * 1000000) (clipboardInputWait d w i h)
+    Just <$> clipboardInputWait display window inp
 
-clipboardInputWait :: Display -> Window -> Atom -> MVar String -> IO ()
-clipboardInputWait display' window' inp' holder' = allocaXEvent (go display' window' inp' holder')
+clipboardInputWait :: Display -> Window -> Atom -> IO String
+clipboardInputWait display' window' inp' = allocaXEvent (go display' window' inp')
   where
-  go display window inp holder evPtr = do
+  go display window inp evPtr = do
+    waitForEvent display
     nextEvent display evPtr
     ev <- getEvent evPtr
     if ev_event_type ev == selectionNotify
-       then do
-         selection <- charsToString . fromMaybe mempty <$> getWindowProperty8 display inp window
-         putMVar holder selection
-       else go display window inp holder evPtr
+       then charsToString . fromMaybe mempty <$> getWindowProperty8 display inp window
+       else go display window inp evPtr
+  waitForEvent display = do
+    nbEvs <- pending display
+    when (nbEvs == 0) $ threadDelay 100000 >> waitForEvent display
 
 charsToString :: [CChar] -> String
 charsToString = decode . map fromIntegral

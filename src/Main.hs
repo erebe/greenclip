@@ -73,8 +73,8 @@ appendToHistory sel history =
 runDaemon :: (MonadIO m, MonadReader Config m, MonadCatch m) => m ()
 runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
   where
-    _0_5sec :: Int
-    _0_5sec = 5 * 10^(5::Int)
+    _1sec :: Int
+    _1sec = 1 * 10^(6::Int)
 
     go history = do
       selection <- liftIO getSelection
@@ -82,11 +82,11 @@ runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
       history' <- appendToHistory selection history
       when (history' /= history) (storeHistory history')
 
-      liftIO $ threadDelay _0_5sec
+      liftIO $ threadDelay _1sec
       go history'
 
     getSelection :: IO Text
-    getSelection = timeout _0_5sec Clip.getClipboardString <&> T.pack . fromMaybe mempty . join
+    getSelection = timeout _1sec Clip.getClipboardString <&> T.pack . fromMaybe mempty . join
 
     handleError ex = do
       let displayMissing = "openDisplay" `T.isInfixOf` tshow ex
