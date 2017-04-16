@@ -86,7 +86,7 @@ runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
       go history'
 
     getSelection :: IO Text
-    getSelection = timeout _0_5sec Clip.getClipboardString <&> T.pack . fromMaybe mempty . join
+    getSelection = timeout 1000000 Clip.getClipboardString <&> T.pack . fromMaybe mempty . join
 
     handleError ex = do
       let displayMissing = "openDisplay" `T.isInfixOf` tshow ex
