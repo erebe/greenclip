@@ -1,0 +1,12 @@
+1.2
+  * Avoid that the program hang sometime due to the fact that XnextEvent is uninterruptible
+
+1.1
+  * Better Unicode support
+  * Add timeout on how long we can wait for selection
+  * Correctly abort the program when no XDisplay is available
+  * Avoid re-opening a connection to the X server each time (dirty-fix)
+  * Avoid hanging issue
+
+1.0
+  * Working version
