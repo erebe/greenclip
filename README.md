@@ -20,7 +20,7 @@ Keeps track of your history of selections to quickly switch between them
 
 1. It's a static binary so drop it anywhere in your $PATH env 
 
-```wget https://github.com/erebe/greenclip/releases/download/1.1/greenclip```
+```wget https://github.com/erebe/greenclip/releases/download/1.2/greenclip```
 
 Alternatively if you are using Archlinux you can install the package from AUR
 
