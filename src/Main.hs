@@ -116,8 +116,9 @@ getConfig = do
   home <- Dir.getHomeDirectory
   let cfgPath = home </> ".config/greenclip.cfg"
 
-  cfgStr <- (readFile cfgPath <&> decodeUtf8) `catchAnyDeep` const mempty
+  cfgStr <- (readFile cfgPath <&> T.strip . decodeUtf8) `catchAnyDeep` const mempty
   let cfg = fromMaybe (defaultConfig home) (readMay cfgStr)
+  print cfg
 
   writeFile cfgPath (fromString $ show cfg)
   return cfg
