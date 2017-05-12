@@ -118,7 +118,6 @@ getConfig = do
 
   cfgStr <- (readFile cfgPath <&> T.strip . decodeUtf8) `catchAnyDeep` const mempty
   let cfg = fromMaybe (defaultConfig home) (readMay cfgStr)
-  print cfg
 
   writeFile cfgPath (fromString $ show cfg)
   return cfg
