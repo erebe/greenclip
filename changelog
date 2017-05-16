@@ -1,5 +1,6 @@
 1.3
   * Fix config file parsing
+  * Add version in the help message
   
 1.2
   * Avoid that the program hang sometime due to the fact that XnextEvent is uninterruptible

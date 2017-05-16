@@ -25,6 +25,6 @@ dependencies:
 executables:
   greenclip:
     source-dirs:      src
-    ghc-options:      -Wall -O3 -static
+    ghc-options:      -Wall -O3
     main:             Main.hs
-    ld-options: -static
+    #    ld-options: -static
