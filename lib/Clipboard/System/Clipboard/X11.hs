@@ -4,6 +4,7 @@
 module System.Clipboard.X11
   ( getClipboardString
   , setClipboardString
+  , getPrimaryClipboard
   ) where
 
 import Graphics.X11.Xlib
@@ -22,16 +23,20 @@ import System.IO.Unsafe (unsafePerformIO)
 import Data.IORef
 import Control.Concurrent (threadDelay)
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-#endif
-
 getClipboardString :: IO (Maybe String)
 getClipboardString = do
     (display, window, clipboards) <- readIORef initialSetup
     inp <- internAtom display "clipboard_get" False
     target <- internAtom display "UTF8_STRING" True
     xConvertSelection display (head clipboards) target inp window currentTime
+    Just <$> clipboardInputWait display window inp
+
+getPrimaryClipboard :: IO (Maybe String)
+getPrimaryClipboard = do
+    (display, window, clipboards) <- readIORef initialSetup
+    inp <- internAtom display "clipboard_get" False
+    target <- internAtom display "UTF8_STRING" True
+    xConvertSelection display (clipboards !! 1) target inp window currentTime
     Just <$> clipboardInputWait display window inp
 
 clipboardInputWait :: Display -> Window -> Atom -> IO String

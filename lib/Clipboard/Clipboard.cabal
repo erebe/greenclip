@@ -41,7 +41,7 @@ Source-repository head
 
 Library
   Exposed-modules: System.Clipboard
-  Extensions: CPP
+  -- Extensions: CPP
   if os(windows)
     Build-depends:  base == 4.*
                   , Win32 >= 2.2.0.0 && < 2.4

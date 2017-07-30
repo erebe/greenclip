@@ -7,14 +7,11 @@ module System.Clipboard
     ( -- * Clipboard interface
       setClipboardString
     , getClipboardString
+    , getPrimaryClipboard
     , modifyClipboardString
     ) where
 
-#if defined(mingw32_HOST_OS) || defined(__MINGW32__)
-import qualified System.Clipboard.Windows as OS
-#else
 import qualified System.Clipboard.X11 as OS
-#endif
 
 -- | Writes a string to the clipboard.
 setClipboardString :: String -> IO ()
@@ -24,6 +21,9 @@ setClipboardString = OS.setClipboardString
 --   Returns 'Nothing' if the clipboard doesn't contain /textual/ data.
 getClipboardString :: IO (Maybe String)
 getClipboardString = OS.getClipboardString
+
+getPrimaryClipboard :: IO (Maybe String)
+getPrimaryClipboard = OS.getPrimaryClipboard
 
 -- | Modifies the clipboard content.
 --   If the clipboard has /textual/ data, this function modifies its content

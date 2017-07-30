@@ -24,9 +24,10 @@ import           System.Timeout     (timeout)
 data Command = DAEMON | PRINT | COPY Text | CLEAR | HELP deriving (Show, Read)
 
 data Config = Config
-  { maxHistoryLength  :: Int
-  , historyPath       :: String
-  , staticHistoryPath :: String
+  { maxHistoryLength           :: Int
+  , historyPath                :: String
+  , staticHistoryPath          :: String
+  , usePrimarySelectionAsInput :: Bool
   } deriving (Show, Read)
 
 type ClipHistory = Vector Text
@@ -71,29 +72,38 @@ appendToHistory sel history =
 
 
 runDaemon :: (MonadIO m, MonadReader Config m, MonadCatch m) => m ()
-runDaemon = forever $ (getHistory >>= go) `catchAnyDeep` handleError
+runDaemon = do
+  usePrimary <- view (to usePrimarySelectionAsInput)
+  let getSelections = (getSelectionFrom Clip.getClipboardString, mempty)
+                    : [(getSelectionFrom Clip.getPrimaryClipboard, mempty) | usePrimary]
+  forever $ (getHistory >>= go getSelections) `catchAnyDeep` handleError
+
   where
     _0_5sec :: Int
     _0_5sec = 5 * 10^(5::Int)
 
-    go history = do
-      selection <- liftIO getSelection
+    getSelection [] = return ([], mempty)
+    getSelection ((getSel, lastSel):getSels) = do
+      selection <- liftIO getSel
+      if selection /= lastSel
+         then return ((getSel, selection) : getSels, selection)
+         else getSelection getSels >>= \(e, selection) -> return ((getSel, lastSel) : e, selection)
 
+    go getSelections history = do
+      (getSelections', selection) <- liftIO $ getSelection getSelections
       history' <- appendToHistory selection history
       when (history' /= history) (storeHistory history')
 
       liftIO $ threadDelay _0_5sec
-      go history'
+      go getSelections' history'
 
-    getSelection :: IO Text
-    getSelection = timeout 1000000 Clip.getClipboardString <&> T.pack . fromMaybe mempty . join
+    getSelectionFrom fn = timeout 1000000 fn <&> T.pack . fromMaybe mempty . join
 
     handleError ex = do
       let displayMissing = "openDisplay" `T.isInfixOf` tshow ex
       if displayMissing
       then error "X display not available. Please start Xorg before running greenclip"
       else sayErrShow ex
-
 
 
 toRofiStr :: Text -> Text
@@ -123,7 +133,7 @@ getConfig = do
   return cfg
 
   where
-    defaultConfig home = Config 15 (home </> ".cache/greenclip.history") (home </> ".cache/greenclip.staticHistory")
+    defaultConfig home = Config 25 (home </> ".cache/greenclip.history") (home </> ".cache/greenclip.staticHistory") False
 
 
 parseArgs :: [Text] -> Command
