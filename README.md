@@ -10,17 +10,18 @@ to reselect things other and other.
 **Purpose :**
 Keeps track of your history of selections to quickly switch between them
 
-**Demo :** 
-<video controls>
-  <source src="https://github.com/erebe/greenclip/releases/download/1.1/demo.webm" type="video/webm">
- <a href="https://www.youtube.com/watch?v=Utk-9Gy8H3w">Video Link</a>
-</video>
+**Demo :**  <a href="https://www.youtube.com/watch?v=Utk-9Gy8H3w">Video Link</a>
+
+**Features :**
+  + Integrated with [rofi](https://github.com/DaveDavenport/rofi)
+  + Permanently set some selections to added at the end (set `staticHistoryPath = your/file/with/static/entries` in the config file)
+  + Merge X Primary selection with clipboard selection (set `usePrimarySelectionAsInput = True` in the config file)
 
 **Installation :**
 
-1. It's a static binary so drop it anywhere in your $PATH env 
+1. It's a static binary so drop it anywhere in your $PATH env
 
-```wget https://github.com/erebe/greenclip/releases/download/1.3/greenclip```
+```wget https://github.com/erebe/greenclip/releases/download/2.0/greenclip```
 
 Alternatively if you are using Archlinux you can install the package from AUR
 
