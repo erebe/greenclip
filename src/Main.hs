@@ -14,7 +14,7 @@ import qualified Data.Text          as T
 import qualified Data.Vector        as V
 import           Lens.Micro
 import           Lens.Micro.Mtl
-import qualified System.Clipboard   as Clip
+import qualified Clipboard   as Clip
 import qualified System.Directory   as Dir
 import           System.Environment (lookupEnv)
 import           System.IO          (IOMode (..), openFile)

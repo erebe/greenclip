@@ -14,13 +14,17 @@ extra-source-files:
 dependencies:
   - base >= 4.7 && < 5
   - classy-prelude
-  - Clipboard
   - text
   - vector
   - binary
   - microlens
   - microlens-mtl
   - directory
+  - X11 >= 1.6
+  - utf8-string
+  - unix
+  - directory
+
 
 executables:
   greenclip:

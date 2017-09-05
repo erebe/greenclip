@@ -1,7 +1,6 @@
-
 {-# LANGUAGE RecordWildCards #-}
 
-module System.Clipboard.X11
+module Clipboard
   ( getClipboardString
   , setClipboardString
   , getPrimaryClipboard
