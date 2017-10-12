@@ -11,6 +11,7 @@ to reselect things other and other.
 Keeps track of your history of selections to quickly switch between them
 
 **Demo:**  <a href="https://www.youtube.com/watch?v=Utk-9Gy8H3w">Video Link</a>
+<br/>
 <a href="https://www.youtube.com/watch?v=4IycORAdW9M">Video made by @gotbletu</a>
 
 **Features:**
