@@ -1,3 +1,6 @@
+2.1
+  * Support ~ expansion in config file
+  
 2.0
   * X Primary selection can be used as Input
 
