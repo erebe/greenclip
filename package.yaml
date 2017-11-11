@@ -24,6 +24,7 @@ dependencies:
   - utf8-string
   - unix
   - directory
+  - wordexp
 
 
 executables:

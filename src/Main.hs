@@ -19,6 +19,7 @@ import qualified System.Directory   as Dir
 import           System.Environment (lookupEnv)
 import           System.IO          (IOMode (..), openFile)
 import           System.Timeout     (timeout)
+import           System.Wordexp.Simple
 
 
 data Command = DAEMON | PRINT | COPY Text | CLEAR | HELP deriving (Show, Read)
@@ -128,12 +129,17 @@ getConfig = do
 
   cfgStr <- (readFile cfgPath <&> T.strip . decodeUtf8) `catchAnyDeep` const mempty
   let cfg = fromMaybe (defaultConfig home) (readMay cfgStr)
-
   writeFile cfgPath (fromString $ show cfg)
-  return cfg
+
+  historyPath' <- expandHomeDir $ historyPath cfg
+  staticHistoryPath' <- expandHomeDir $ staticHistoryPath cfg
+
+  let cfg' = cfg {historyPath = historyPath', staticHistoryPath = staticHistoryPath'}
+  return cfg'
 
   where
     defaultConfig home = Config 25 (home </> ".cache/greenclip.history") (home </> ".cache/greenclip.staticHistory") False
+    expandHomeDir str = (fromMaybe str . listToMaybe <$> wordexp str) `catch` (\(_ :: SomeException) -> return str)
 
 
 parseArgs :: [Text] -> Command
@@ -153,7 +159,7 @@ run cmd = do
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
     COPY sel -> advertiseSelection sel
-    HELP     -> putStrLn $ "greenclip v2.0 -- Recyle your clipboard selections\n\n" <>
+    HELP     -> putStrLn $ "greenclip v2.1 -- Recyle your clipboard selections\n\n" <>
                            "Available commands\n" <>
                            "daemon: Spawn the daemon that will listen to selections\n" <>
                            "print:  Display all selections history\n" <>
