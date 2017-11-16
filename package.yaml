@@ -12,19 +12,21 @@ extra-source-files:
 - README.md
 
 dependencies:
-  - base >= 4.7 && < 5
-  - classy-prelude
+  - base
+  - protolude
+  - exceptions
+  - bytestring
   - text
   - vector
+  - hashable
   - binary
   - microlens
   - microlens-mtl
   - directory
-  - X11 >= 1.6
-  - utf8-string
   - unix
   - directory
   - wordexp
+  - X11 >= 1.6
 
 
 executables:
@@ -32,4 +34,4 @@ executables:
     source-dirs:      src
     ghc-options:      -Wall -O3
     main:             Main.hs
-    #    ld-options: -static
+    #ld-options: -static
