@@ -1,8 +1,10 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ViewPatterns          #-}
 
 
 module Main where
@@ -11,7 +13,9 @@ import           Protolude             hiding (readFile, to)
 
 import           Control.Monad.Catch   (MonadCatch, catchAll)
 import           Data.Binary           (decode, encode)
+import           Data.Hashable         (hash)
 import qualified Data.Text             as T
+import qualified Data.ByteString             as B
 import           Data.Vector           (Vector)
 import qualified Data.Vector           as V
 import           Lens.Micro
@@ -32,10 +36,11 @@ data Config = Config
   { maxHistoryLength           :: Int
   , historyPath                :: Text
   , staticHistoryPath          :: Text
+  , imageCachePath                  :: Text
   , usePrimarySelectionAsInput :: Bool
   } deriving (Show, Read)
 
-type ClipHistory = Vector Text
+type ClipHistory = Vector Clip.Selection
 
 readFile :: FilePath -> IO ByteString
 readFile filepath = bracket (openFile filepath ReadMode) hClose $ \h -> do
@@ -46,17 +51,18 @@ readFile filepath = bracket (openFile filepath ReadMode) hClose $ \h -> do
 getHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
 getHistory = do
   storePath <- view $ to (toS . historyPath)
-  liftIO $ readH storePath
+  liftIO $ readH storePath `catchAll` const mempty
   where
-    readH filePath = readFile filePath <&> V.fromList . decode . toS
+    readH filePath = B.readFile filePath <&> V.fromList . decode . toS
 
 
 getStaticHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
 getStaticHistory = do
   storePath <- view $ to (toS . staticHistoryPath)
-  liftIO $ readH storePath
+  liftIO $ readH storePath `catchAll` const mempty
   where
-    readH filePath = readFile filePath <&> V.fromList . T.lines . toS
+    readH filePath = readFile filePath <&> V.fromList . fmap toSelection . T.lines . toS
+    toSelection txt = Clip.Selection "greenclip" (Clip.UTF8 txt)
 
 
 storeHistory :: (MonadIO m, MonadReader Config m) => ClipHistory -> m ()
@@ -64,22 +70,41 @@ storeHistory history = do
   storePath <- view $ to (toS . historyPath)
   liftIO $ writeH storePath history
   where
-    writeH storePath = writeFile storePath . toS . encode . V.toList
+    writeH storePath = B.writeFile storePath . toS . encode . V.toList
 
 
-appendToHistory :: (MonadIO m, MonadReader Config m) => Text -> ClipHistory -> m ClipHistory
-appendToHistory sel history =
-  let selection = T.strip sel in
-  if selection == mempty || selection == fromMaybe mempty (V.headM history)
-  then return history
-  else do
-    maxLen <- view $ to maxHistoryLength
-    return $ fst . V.splitAt maxLen . V.cons selection $ V.filter (/= selection) history
+appendToHistory :: (MonadIO m, MonadReader Config m) => Clip.Selection -> ClipHistory -> m (ClipHistory, ClipHistory)
+appendToHistory sel history' =
+  case sel of
+    Clip.Selection _ (Clip.UTF8 _) -> appendGeneric sel history'
+    Clip.Selection _ (Clip.PNG bytes) -> appendImage Clip.PNG ".png" bytes
+    Clip.Selection _ (Clip.JPEG bytes) -> appendImage Clip.JPEG ".jpeg" bytes
+    Clip.Selection _ (Clip.BITMAP bytes) -> appendImage Clip.BITMAP ".bmp" bytes
 
+  where
+    appendImage imgCtr extension bytes = do
+      cachePth <- view (to imageCachePath)
+      let imgHash = show $ hash bytes
+      written <- liftIO $ writeImage (toS $ cachePth <> imgHash <> extension) bytes
+      if written
+      then appendGeneric (sel {Clip.selection = imgCtr $ toS imgHash}) history'
+      else return (history', mempty)
 
-runDaemon :: (MonadIO m, MonadCatch m, MonadReader Config m) => m ()
-runDaemon = forever $ run `catchAll` handleError
+    writeImage path bytes = do
+      fileExist <- Dir.doesFileExist path
+      if fileExist
+        then return False
+        else B.writeFile path bytes >> return True
 
+    appendGeneric selection history =
+      if maybe False (\sel' -> Clip.selection sel' == Clip.selection selection) (history V.!? 0)
+        then return (history, mempty)
+        else do
+          maxLen <- view $ to maxHistoryLength
+          return $ V.splitAt maxLen . V.cons selection $ V.filter (\ori -> Clip.selection ori /= Clip.selection selection) history
+
+runDaemon:: (MonadIO m, MonadCatch m, MonadReader Config m) => m ()
+runDaemon = forever $ go `catchAll` handleError
   where
     _0_5sec :: Int
     _0_5sec = 5 * 100000
@@ -87,34 +112,35 @@ runDaemon = forever $ run `catchAll` handleError
     _1sec :: Int
     _1sec = 1000000
 
-    run = do
+    go = do
       history <- getHistory
-      x11Context <- liftIO Clip.getXorgContext
       usePrimary <- view $ to usePrimarySelectionAsInput
-      let getSelections = (getSelectionFrom (Clip.getClipboardSelection x11Context), mempty)
-                        : [(getSelectionFrom (Clip.getPrimarySelection x11Context), mempty) | usePrimary]
-      go getSelections history
+      cfg <- ask
 
-    getSelection [] = return ([], mempty)
+      liftIO $ bracket Clip.getXorgContext Clip.destroyXorgContext $ \x11Context -> do
+        let getSelections = (getSelectionFrom (Clip.getClipboardSelection x11Context), Nothing)
+                          : [(getSelectionFrom (Clip.getPrimarySelection x11Context), Nothing) | usePrimary]
+        void $ runReaderT (innerloop getSelections history) cfg
+
+    getSelection [] = return ([], Nothing)
     getSelection ((getSel, lastSel):getSels) = do
       selection <- liftIO getSel
-      if selection /= lastSel
+      if fmap Clip.selection selection /= fmap Clip.selection lastSel
          then return ((getSel, selection) : getSels, selection)
-         else getSelection getSels >>= \(e, selection) -> return ((getSel, lastSel) : e, selection)
+         else getSelection getSels >>= \(e, sel) -> return ((getSel, lastSel) : e, sel)
 
-    go getSelections history = do
+    innerloop :: (MonadIO m, MonadReader Config m) => [(IO (Maybe Clip.Selection), Maybe Clip.Selection)] -> ClipHistory -> m ClipHistory
+    innerloop getSelections history = do
       (getSelections', selection) <- liftIO $ getSelection getSelections
-      history' <- appendToHistory selection history
-      when (history' /= history) (storeHistory history')
+      (history', toBePurged) <- maybe (return (history, mempty)) (`appendToHistory` history) selection
+      --TODO purge history
 
+      when (isJust selection && history' /= history) (storeHistory history')
       liftIO $ threadDelay _0_5sec
-      go getSelections' history'
+      innerloop getSelections' history'
 
-    getSelectionFrom fn = do
-      sel <- timeout _1sec fn
-      case sel of
-        Nothing -> return mempty
-        Just _  -> return "ok"
+    getSelectionFrom :: IO (Maybe Clip.Selection) -> IO (Maybe Clip.Selection)
+    getSelectionFrom = fmap join . timeout _1sec
 
     handleError ex = do
       let displayMissing = "openDisplay" `T.isInfixOf` show ex
@@ -124,11 +150,20 @@ runDaemon = forever $ run `catchAll` handleError
       liftIO $ threadDelay _0_5sec
 
 
-toRofiStr :: Text -> Text
-toRofiStr = T.map (\c -> if c == '\n' || c == '\r' then '\xA0' else c)
+toRofiStr :: Clip.Selection -> Text
+toRofiStr (Clip.Selection _ (Clip.UTF8 txt)) = T.map (\c -> if c == '\n' || c == '\r' then '\xA0' else c) txt
+toRofiStr (Clip.Selection appName (Clip.PNG txt)) = "image/png " <> appName <> " " <> toS txt
+toRofiStr (Clip.Selection appName (Clip.JPEG txt)) = "image/jpeg " <> appName <> " " <> toS txt
+toRofiStr (Clip.Selection appName (Clip.BITMAP txt)) = "image/bmp " <> appName <> " " <> toS txt
 
-fromRofiStr :: Text -> Text
-fromRofiStr = T.map (\c -> if c == '\xA0' then '\n' else c)
+fromRofiStr :: Text -> Text -> IO Clip.Selection
+fromRofiStr cachePth txt@(T.isPrefixOf "image/png " -> True) = B.readFile (toS $ cachePth <> getHash txt <> ".png") <&> Clip.Selection "greenclip" . Clip.PNG
+fromRofiStr cachePth txt@(T.isPrefixOf "image/jpeg " -> True) = B.readFile (toS $ cachePth <> getHash txt <> ".jpeg") <&> Clip.Selection "greenclip" . Clip.JPEG
+fromRofiStr cachePth txt@(T.isPrefixOf "image/bmp " -> True) = B.readFile (toS $ cachePth <> getHash txt <> ".bmp") <&> Clip.Selection "greenclip" . Clip.BITMAP
+fromRofiStr _ txt = return $ Clip.Selection "greenclip" (Clip.UTF8 (T.map (\c -> if c == '\xA0' then '\n' else c) txt))
+
+getHash :: Text -> Text
+getHash = fromMaybe mempty . head . drop 2 . T.split (== ' ')
 
 
 printHistoryForRofi :: (MonadIO m, MonadReader Config m) => m ()
@@ -138,8 +173,11 @@ printHistoryForRofi = do
   return ()
 
 
-advertiseSelection :: Text -> IO ()
-advertiseSelection = undefined -- Clip.setClipboardString . fromRofiStr
+advertiseSelection :: (MonadIO m, MonadReader Config m) => Text -> m ()
+advertiseSelection txt = do
+  cachePth <- view (to imageCachePath)
+  selection <- liftIO $ fromRofiStr cachePth txt
+  liftIO $ Clip.setClipboardSelection selection
 
 
 getConfig :: IO Config
@@ -158,7 +196,7 @@ getConfig = do
   return cfg'
 
   where
-    defaultConfig home = Config 25 (home <> "/.cache/greenclip.history") (home <> "/.cache/greenclip.staticHistory") False
+    defaultConfig home = Config 25 (home <> "/.cache/greenclip.history") (home <> "/.cache/greenclip.staticHistory") "/tmp/" False
     expandHomeDir str = (fromMaybe str . listToMaybe <$> wordexp str) `catchAll` (\_ -> return str)
 
 
@@ -175,10 +213,10 @@ run cmd = do
   case cmd of
     DAEMON   -> runReaderT runDaemon cfg
     PRINT    -> runReaderT printHistoryForRofi cfg
-    CLEAR    -> runReaderT (storeHistory mempty) cfg
+    CLEAR    -> undefined --runReaderT (storeHistory mempty) cfg
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
-    COPY sel -> advertiseSelection sel
+    COPY sel -> runReaderT (advertiseSelection sel) cfg
     HELP     -> putText $ "greenclip v2.1 -- Recyle your clipboard selections\n\n" <>
                           "Available commands\n" <>
                           "daemon: Spawn the daemon that will listen to selections\n" <>

@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -10,29 +12,31 @@ import           Protolude
 import           Graphics.X11.Xlib
 import           Graphics.X11.Xlib.Extras
 
-import           Lens.Micro               ((<&>))
-import qualified Data.ByteString as B
 import           Control.Concurrent       (threadDelay)
+import           Data.Binary              (Binary)
+import qualified Data.ByteString          as B
+import           Lens.Micro               ((<&>))
 
--- import           System.Posix.Process     (forkProcess)
--- import           System.Directory         (setCurrentDirectory)
--- import           System.IO                (hClose, stderr, stdin, stdout)
+import           System.Directory         (setCurrentDirectory)
+import           System.IO                (hClose, stderr, stdin, stdout)
+import           System.Posix.Process     (forkProcess)
 
--- import           Foreign.C.Types          (CChar, CUChar)
--- import           Foreign.Marshal.Array    (withArrayLen)
-import           Foreign                  (alloca, castPtr, peek,
-                                           peekArray, {- peekByteOff -})
+import           Data.ByteString          (unpack)
+import qualified Data.Text                as T
+import           Foreign                  (alloca, castPtr, peek, peekArray)
+import           Foreign.C.Types          (CUChar)
+import           Foreign.Marshal.Array    (withArrayLen)
 
 data SelectionType = UTF8 Text
                    | PNG ByteString
                    | JPEG ByteString
                    | BITMAP ByteString
-                   deriving (Show)
+                   deriving (Show, Eq, Generic, Binary)
 
 data Selection = Selection {
     appName   :: Text
   , selection :: SelectionType
-} deriving (Show)
+} deriving (Show, Eq, Generic, Binary)
 
 data XorgContext = XorgContext {
     display          :: Display
@@ -56,8 +60,10 @@ windowNameOfClipboardOwner :: XorgContext -> Atom -> IO Text
 windowNameOfClipboardOwner XorgContext{..} clipboard = do
 
   window <- xGetSelectionOwner display clipboard
-  windowName <- fetchName display window <&> toS . fromMaybe mempty
-  return $! windowName
+
+  if window > 0
+    then fetchName display window <&> toS . fromMaybe mempty
+    else return mempty
 
 
 getSupportedMimes :: XorgContext -> Atom -> IO [Text]
@@ -84,7 +90,6 @@ getSupportedMimes ctx@XorgContext{..} clipboard =
                     actual_format <- peek actual_format_return <&> fromIntegral :: IO Atom
                     nitems        <- peek nitems_return <&> fromIntegral
                     getprop prop_ptr nitems actual_format
-        print $ ret2
         fmap (fmap toS) (getAtomNames display $ fromMaybe mempty ret2)
   where
     getprop prop_ptr nitems actual_format
@@ -95,18 +100,17 @@ getSupportedMimes ctx@XorgContext{..} clipboard =
             return $ Just retval
 
 
-getClipboardSelection :: XorgContext -> IO Selection
+getClipboardSelection :: XorgContext -> IO (Maybe Selection)
 getClipboardSelection ctx@XorgContext{..} =
   getSelection ctx defaultClipboard
 
-getPrimarySelection :: XorgContext -> IO Selection
+getPrimarySelection :: XorgContext -> IO (Maybe Selection)
 getPrimarySelection ctx@XorgContext{..} =
   getSelection ctx primaryClipboard
 
-getSelection :: XorgContext -> Atom -> IO Selection
+getSelection :: XorgContext -> Atom -> IO (Maybe Selection)
 getSelection ctx@XorgContext{..} clipboard = do
   mimes <- getSupportedMimes ctx clipboard
-  print mimes
   let selectedMime = chooseSelectionType mimes
 
   target <- internAtom display (toS selectedMime) True
@@ -117,10 +121,12 @@ getSelection ctx@XorgContext{..} clipboard = do
                       <&> B.pack . map fromIntegral . fromMaybe mempty
 
   windowName <- windowNameOfClipboardOwner ctx clipboard
-  return Selection {
-    appName = windowName
-  , selection = mimeToSelectionType selectedMime clipboardContent
-  }
+  return $ if clipboardContent == mempty
+            then Nothing
+            else Just Selection {
+              appName = windowName
+            , selection = mimeToSelectionType selectedMime clipboardContent
+            }
 
  where
    priorities = ["image/png", "image/jpeg", "image/bmp", "UTF8_STRING", "TEXT"]
@@ -129,10 +135,10 @@ getSelection ctx@XorgContext{..} clipboard = do
      let selectedMime = msum $ (\mime -> find (== mime) mimes) <$> priorities
      in fromMaybe "UTF8_STRING" selectedMime
 
-   mimeToSelectionType "image/png" selContent = PNG selContent
+   mimeToSelectionType "image/png" selContent  = PNG selContent
    mimeToSelectionType "image/jpeg" selContent = JPEG selContent
-   mimeToSelectionType "image/bmp" selContent = BITMAP selContent
-   mimeToSelectionType _ selContent = UTF8 (toS selContent)
+   mimeToSelectionType "image/bmp" selContent  = BITMAP selContent
+   mimeToSelectionType _ selContent            = UTF8 (T.strip $ toS selContent)
 
 
 getXorgContext :: IO XorgContext
@@ -172,105 +178,71 @@ waitNotify XorgContext{..} = allocaXEvent (go display ownWindow)
 
 
 
+setClipboardSelection :: Selection -> IO ()
+setClipboardSelection sel = void $ forkProcess $ do
+        mapM_ hClose [stdin, stdout, stderr]
+        setCurrentDirectory "/"
+        bracket getXorgContext destroyXorgContext $ \ctx@XorgContext{..} -> do
+          let clipboards = [defaultClipboard, primaryClipboard]
+          mapM_ (\atom -> xSetSelectionOwner display atom ownWindow currentTime) clipboards
+          advertiseSelection ctx sel
+          return ()
 
 
+selectionTypeToMime :: SelectionType -> ByteString
+selectionTypeToMime (PNG _)    = "image/png"
+selectionTypeToMime (JPEG _)   = "image/jpeg"
+selectionTypeToMime (BITMAP _) = "image/bmp"
+selectionTypeToMime (UTF8 _)   = "UTF8_STRING"
 
+getContent :: SelectionType -> ByteString
+getContent (PNG bytes)    = bytes
+getContent (JPEG bytes)   = bytes
+getContent (BITMAP bytes) = bytes
+getContent (UTF8 txt)     = toS txt
 
+advertiseSelection :: XorgContext -> Selection ->  IO ()
+advertiseSelection ctx@XorgContext{..} sel = allocaXEvent (go [defaultClipboard, primaryClipboard])
+  where
+    go [] _ = return ()
+    go clipboards evPtr = do
+      nextEvent display evPtr
+      ev <- getEvent evPtr
+      case ev of
+          SelectionRequest {..} -> do
+              target' <- getAtomName display ev_target
+              response <- case target' of
+                Nothing -> return none
+                Just atomName -> handleRequest ctx (selection sel) ev_requestor ev_property (toS atomName)
 
--- getClipboardString :: IO (Maybe Text)
--- getClipboardString = do
---     (display, window, clipboards) <- readIORef initialSetup
---
---     inp <- internAtom display "clipboard_get" False
---     target <- internAtom display "UTF8_STRING" True
---     xConvertSelection display (unsafeHead clipboards) target inp window currentTime
---     Just <$> waitClipboardNotify display window inp
---
--- getPrimaryClipboard :: IO (Maybe Text)
--- getPrimaryClipboard = do
---     (display, window, clipboards) <- readIORef initialSetup
---     inp <- internAtom display "clipboard_get" False
---     target <- internAtom display "UTF8_STRING" True
---     xConvertSelection display (unsafeIndex clipboards 1) target inp window currentTime
---     Just <$> waitClipboardNotify display window inp
---
--- waitClipboardNotify :: Display -> Window -> Atom -> IO Text
--- waitClipboardNotify display' window' inp' = allocaXEvent (go display' window' inp')
---   where
---   go display window inp evPtr = do
---     waitForEvent display
---     nextEvent display evPtr
---     ev <- getEvent evPtr
---     if ev_event_type ev == selectionNotify
---        then charsToString . fromMaybe mempty <$> getWindowProperty8 display inp window
---        else go display window inp evPtr
---   waitForEvent display = do
---     nbEvs <- pending display
---     when (nbEvs == 0) $ threadDelay 100000 >> waitForEvent display
---
--- charsToString :: [CChar] -> Text
--- charsToString = toS . decode . map fromIntegral
---
--- setClipboardString :: Text -> IO ()
--- setClipboardString str = void $ forkProcess $ do
---         mapM_ hClose [stdin, stdout, stderr]
---         setCurrentDirectory "/"
---         (display, window, clipboards) <- readIORef initialSetup
---         mapM_ (\atom -> xSetSelectionOwner display atom window currentTime) clipboards
---         advertiseSelection display clipboards (stringToChars str)
---         cleanup display window
---
--- advertiseSelection :: Display -> [Atom] -> [CUChar] -> IO ()
--- advertiseSelection display clipboards' str = allocaXEvent (go clipboards')
---   where
---     go [] _ = return ()
---     go clipboards evPtr = do
---       nextEvent display evPtr
---       ev <- getEvent evPtr
---       case ev of
---           SelectionRequest {..} -> do
---               target' <- getAtomName display ev_target
---               res <- handleOutput display ev_requestor ev_property (toS <$> target') str
---               sendSelectionNotify display ev_requestor ev_selection ev_target res ev_time
---               go clipboards evPtr
---
---           _ | ev_event_type ev == selectionClear -> do
---               target <- peekByteOff evPtr 40 :: IO Atom
---               go (filter (/= target) clipboards) evPtr
---
---           _ -> go clipboards evPtr
---
--- handleOutput :: Display -> Window -> Atom -> Maybe Text -> [CUChar] -> IO Atom
--- handleOutput display req prop (Just "UTF8_STRING") str = do
---     prop' <- getAtomName display prop
---     if isNothing prop' then handleOutput display req prop Nothing str else do
---         target <- internAtom display "UTF8_STRING" True
---         void $ withArrayLen str $ \len str' ->
---             xChangeProperty display req prop target 8 propModeReplace str'
---                             (fromIntegral len)
---         return prop
--- handleOutput _ _ _ _ _ = return none
---
--- sendSelectionNotify :: Display -> Window -> Atom -> Atom -> Atom -> Time -> IO ()
--- sendSelectionNotify display req sel target prop time = allocaXEvent $ \ev -> do
---     setEventType ev selectionNotify
---     setSelectionNotify ev req sel target prop time
---     sendEvent display req False 0 ev
---
--- stringToChars :: Text -> [CUChar]
--- stringToChars = map fromIntegral . encode . toS
---
--- initialSetup :: IORef (Display, Window, [Atom])
--- initialSetup = unsafePerformIO $ do
---     display <- openDisplay ""
---     window <- createSimpleWindow display (defaultRootWindow display)
---                                  0 0 1 1 0 0 0
---     clipboards <- internAtom display "CLIPBOARD" False
---     newIORef (display, window, [clipboards, pRIMARY])
--- {-# NOINLINE initialSetup #-}
---
---
--- cleanup :: Display -> Window -> IO ()
--- cleanup display window = do
---     destroyWindow display window
---     closeDisplay display
+              sendSelectionNotify display ev_requestor ev_selection ev_target response ev_time
+              go clipboards evPtr
+
+          SelectionClear{..} -> go (filter (/= ev_selection) clipboards) evPtr
+
+          _ -> go clipboards evPtr
+
+handleRequest :: XorgContext -> SelectionType -> Window -> Atom -> Text -> IO Atom
+handleRequest XorgContext{..} sel requestorWindow selection "TARGETS" = do
+  targets <- internAtom display "TARGETS" True
+  target <- internAtom display (toS $ selectionTypeToMime sel) True
+  changeProperty32 display requestorWindow selection aTOM propModeReplace [fromIntegral targets, fromIntegral target]
+  return selection
+
+handleRequest XorgContext{..} sel req prop targetStr =
+  if targetStr == toS (selectionTypeToMime sel)
+    then do
+      target <- internAtom display (toS targetStr) True
+      void $ withArrayLen (byteStringToCUChars $ getContent sel) $ \len bytes ->
+          xChangeProperty display req prop target 8 propModeReplace bytes (fromIntegral len)
+      return prop
+    else return none
+
+sendSelectionNotify :: Display -> Window -> Atom -> Atom -> Atom -> Time -> IO ()
+sendSelectionNotify display req sel target prop time = allocaXEvent $ \ev -> do
+  setEventType ev selectionNotify
+  setSelectionNotify ev req sel target prop time
+  sendEvent display req False 0 ev
+
+byteStringToCUChars :: ByteString -> [CUChar]
+byteStringToCUChars = map fromIntegral . unpack
