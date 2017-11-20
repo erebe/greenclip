@@ -15,7 +15,8 @@ RUN rm -rf ~/.stack &&  \
 
 COPY . /mnt
 
-RUN PATH=$(pwd):$PATH stack install --split-objs --ghc-options="-fPIC -fllvm"
+RUN echo '  ld-options: -static -Wl,--unresolved-symbols=ignore-all' >> greenclip.cabal ; \
+    stack install --split-objs --ghc-options="-fPIC -fllvm"
 RUN upx --ultra-brute /root/.local/bin/greenclip
 
 
