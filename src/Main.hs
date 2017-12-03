@@ -134,7 +134,7 @@ runDaemon = forever $ go `catchAll` handleError
     innerloop getSelections history = do
       (getSelections', selection) <- liftIO $ getSelection getSelections
       (history', toBePurged) <- maybe (return (history, mempty)) (`appendToHistory` history) selection
-      --TODO purge history
+      traverse_ purgeSelection toBePurged
 
       when (isJust selection && history' /= history) (storeHistory history')
       liftIO $ threadDelay _0_5sec
@@ -142,6 +142,15 @@ runDaemon = forever $ go `catchAll` handleError
 
     getSelectionFrom :: IO (Maybe Clip.Selection) -> IO (Maybe Clip.Selection)
     getSelectionFrom = fmap join . timeout _1sec
+
+    purgeSelection (Clip.Selection _ (Clip.PNG txt)) = purge (toS txt <> ".png")
+    purgeSelection (Clip.Selection _ (Clip.JPEG txt)) = purge (toS txt <> ".jpeg")
+    purgeSelection (Clip.Selection _ (Clip.BITMAP txt)) = purge (toS txt <> ".bmp")
+    purgeSelection _ = return ()
+
+    purge path = do
+      cachePth <- view (to imageCachePath)
+      liftIO $ Dir.removeFile (toS $ cachePth <> "/" <> path) `catchAll` const mempty
 
     handleError ex = do
       let displayMissing = "openDisplay" `T.isInfixOf` show ex
