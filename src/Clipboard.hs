@@ -7,7 +7,7 @@
 
 module Clipboard where
 
-import           Protolude
+import           Protolude hiding ((<&>))
 
 import           Graphics.X11.Xlib
 import           Graphics.X11.Xlib.Extras
@@ -15,7 +15,7 @@ import           Graphics.X11.Xlib.Extras
 import           Control.Concurrent       (threadDelay)
 import           Data.Binary              (Binary)
 import qualified Data.ByteString          as B
-import           Lens.Micro               ((<&>))
+import           Lens.Micro
 
 import           System.Directory         (setCurrentDirectory)
 import           System.IO                (hClose, stderr, stdin, stdout)
@@ -172,9 +172,9 @@ waitNotify XorgContext{..} = allocaXEvent (go display ownWindow)
 
   waitForEvents display' = do
     nbEvs <- pending display'
-    when (nbEvs == 0) $ threadDelay _1ms >> waitForEvents display'
+    when (nbEvs == 0) $ threadDelay _1us >> waitForEvents display'
 
-  _1ms = 100000
+  _1us = 1000
 
 
 

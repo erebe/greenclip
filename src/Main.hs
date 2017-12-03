@@ -9,13 +9,13 @@
 
 module Main where
 
-import           Protolude             hiding (readFile, to)
+import           Protolude             hiding (readFile, to, (<&>), (&))
 
 import           Control.Monad.Catch   (MonadCatch, catchAll)
 import           Data.Binary           (decode, encode)
+import qualified Data.ByteString       as B
 import           Data.Hashable         (hash)
 import qualified Data.Text             as T
-import qualified Data.ByteString             as B
 import           Data.Vector           (Vector)
 import qualified Data.Vector           as V
 import           Lens.Micro
@@ -36,7 +36,7 @@ data Config = Config
   { maxHistoryLength           :: Int
   , historyPath                :: Text
   , staticHistoryPath          :: Text
-  , imageCachePath                  :: Text
+  , imageCachePath             :: Text
   , usePrimarySelectionAsInput :: Bool
   } deriving (Show, Read)
 
@@ -85,7 +85,8 @@ appendToHistory sel history' =
     appendImage imgCtr extension bytes = do
       cachePth <- view (to imageCachePath)
       let imgHash = show $ hash bytes
-      written <- liftIO $ writeImage (toS $ cachePth <> imgHash <> extension) bytes
+      let imgPath = toS $ cachePth <> imgHash <> extension
+      written <- liftIO $ writeImage imgPath bytes
       if written
       then appendGeneric (sel {Clip.selection = imgCtr $ toS imgHash}) history'
       else return (history', mempty)
@@ -185,19 +186,24 @@ getConfig = do
   home <- Dir.getHomeDirectory
   let cfgPath = home <> "/.config/greenclip.cfg"
 
-  cfgStr <- (readFile cfgPath <&> T.strip . toS) `catchAll` const mempty
-  let cfg = fromMaybe (defaultConfig (toS home)) (readMaybe $ toS cfgStr)
-  writeFile cfgPath (show cfg)
+  cfgStr <- readFile cfgPath `catchAll` const mempty
+  let unprettyCfg = cfgStr & T.strip . T.replace "\n" "" . toS
+  let cfg = fromMaybe defaultConfig (readMaybe $ toS unprettyCfg)
+  let prettyCfg = show cfg & T.replace "," ",\n" . T.replace "{" "{\n " . T.replace "}" "\n}"
+  writeFile cfgPath prettyCfg
 
-  historyPath' <- expandHomeDir . toS $ historyPath cfg
-  staticHistoryPath' <- expandHomeDir . toS $ staticHistoryPath cfg
+  historyPath' <- expandHomeDir $ cfg ^. to historyPath
+  staticHistoryPath' <- expandHomeDir $ cfg ^. to staticHistoryPath
+  imageCachePath' <- expandHomeDir $ cfg ^. to imageCachePath
 
-  let cfg' = cfg {historyPath = toS historyPath', staticHistoryPath = toS staticHistoryPath'}
-  return cfg'
+  return $ cfg { historyPath = historyPath'
+               , staticHistoryPath = staticHistoryPath'
+               , imageCachePath = imageCachePath'
+               }
 
   where
-    defaultConfig home = Config 25 (home <> "/.cache/greenclip.history") (home <> "/.cache/greenclip.staticHistory") "/tmp/" False
-    expandHomeDir str = (fromMaybe str . listToMaybe <$> wordexp str) `catchAll` (\_ -> return str)
+    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/" False
+    expandHomeDir str = (toS . fromMaybe (toS str) . listToMaybe <$> wordexp (toS str)) `catchAll` (\_ -> return $ toS str)
 
 
 parseArgs :: [Text] -> Command
@@ -217,7 +223,7 @@ run cmd = do
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
     COPY sel -> runReaderT (advertiseSelection sel) cfg
-    HELP     -> putText $ "greenclip v2.1 -- Recyle your clipboard selections\n\n" <>
+    HELP     -> putText $ "greenclip v3.0 -- Recyle your clipboard selections\n\n" <>
                           "Available commands\n" <>
                           "daemon: Spawn the daemon that will listen to selections\n" <>
                           "print:  Display all selections history\n" <>
