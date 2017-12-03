@@ -38,6 +38,7 @@ data Config = Config
   , staticHistoryPath          :: Text
   , imageCachePath             :: Text
   , usePrimarySelectionAsInput :: Bool
+  , blacklistedApps            :: [Text]
   } deriving (Show, Read)
 
 type ClipHistory = Vector Clip.Selection
@@ -132,11 +133,24 @@ runDaemon = forever $ go `catchAll` handleError
 
     innerloop :: (MonadIO m, MonadReader Config m) => [(IO (Maybe Clip.Selection), Maybe Clip.Selection)] -> ClipHistory -> m ClipHistory
     innerloop getSelections history = do
-      (getSelections', selection) <- liftIO $ getSelection getSelections
+      -- Get selection from enabled clipboards
+      (getSelections', sel) <- liftIO $ getSelection getSelections
+
+      -- Do not use selection coming from blacklisted app
+      liftIO $ when (isJust sel) (print (Clip.appName <$> sel))
+      blacklist <- view (to blacklistedApps)
+      let selection = sel >>= \s -> if isJust $ find (== Clip.appName s) blacklist
+                                      then Nothing
+                                      else Just s
+
+      -- Append current selection to history and get back entries needed to be purged
       (history', toBePurged) <- maybe (return (history, mempty)) (`appendToHistory` history) selection
       traverse_ purgeSelection toBePurged
 
+      -- backup on disk history if it as changed seen last backup
       when (isJust selection && history' /= history) (storeHistory history')
+
+      -- Getting some rest
       liftIO $ threadDelay _0_5sec
       innerloop getSelections' history'
 
@@ -211,7 +225,7 @@ getConfig = do
                }
 
   where
-    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/" False
+    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/" False []
     expandHomeDir str = (toS . fromMaybe (toS str) . listToMaybe <$> wordexp (toS str)) `catchAll` (\_ -> return $ toS str)
 
 
