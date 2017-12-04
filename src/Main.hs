@@ -87,10 +87,8 @@ appendToHistory sel history' =
       cachePth <- view (to imageCachePath)
       let imgHash = show $ hash bytes
       let imgPath = toS $ cachePth <> imgHash <> extension
-      written <- liftIO $ writeImage imgPath bytes
-      if written
-      then appendGeneric (sel {Clip.selection = imgCtr $ toS imgHash}) history'
-      else return (history', mempty)
+      _ <- liftIO $ writeImage imgPath bytes
+      appendGeneric (sel {Clip.selection = imgCtr $ toS imgHash}) history'
 
     writeImage path bytes = do
       fileExist <- Dir.doesFileExist path
