@@ -110,7 +110,8 @@ getSupportedMimes ctx@XorgContext{..} clipboard =
                     actual_format <- peek actual_format_return <&> fromIntegral :: IO Atom
                     nitems        <- peek nitems_return <&> fromIntegral
                     getprop prop_ptr nitems actual_format
-        fmap (fmap toS) (getAtomNames display $ fromMaybe mempty ret2)
+        let atoms = filter (/= 0) $ fromMaybe mempty ret2
+        fmap (fmap toS) (getAtomNames display atoms)
   where
     getprop prop_ptr nitems actual_format
         | actual_format == 0    = return Nothing -- Property not found
