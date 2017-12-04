@@ -187,7 +187,7 @@ fromRofiStr cachePth txt@(T.isPrefixOf "image/bmp " -> True) = B.readFile (toS $
 fromRofiStr _ txt = return $ Clip.Selection "greenclip" (Clip.UTF8 (T.map (\c -> if c == '\xA0' then '\n' else c) txt))
 
 getHash :: Text -> Text
-getHash = fromMaybe mempty . head . drop 2 . T.split (== ' ')
+getHash = fromMaybe mempty . lastMay . T.split (== ' ')
 
 
 printHistoryForRofi :: (MonadIO m, MonadReader Config m) => m ()
