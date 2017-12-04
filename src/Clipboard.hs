@@ -48,13 +48,11 @@ data XorgContext = XorgContext {
 
 
 test :: IO ()
-test = do
-  ctx <- getXorgContext
-
-  ret <- getClipboardSelection ctx
-  print $! ret
-
-  return ()
+test =
+  bracket getXorgContext destroyXorgContext $ \ctx -> do
+    ret <- getPrimarySelection ctx
+    print $! ret
+    return ()
 
 windowNameOfClipboardOwner :: XorgContext -> Atom -> IO Text
 windowNameOfClipboardOwner XorgContext{..} clipboard = do
@@ -65,6 +63,28 @@ windowNameOfClipboardOwner XorgContext{..} clipboard = do
     then fetchName display window <&> toS . fromMaybe mempty
     else return mempty
 
+
+isIncrementalTransfert :: XorgContext -> IO Bool
+isIncrementalTransfert XorgContext{..}  =
+    alloca $ \actual_type_return ->
+    alloca $ \actual_format_return ->
+    alloca $ \nitems_return ->
+    alloca $ \bytes_after_return ->
+    alloca $ \prop_return -> do
+        incr <- internAtom display "INCR" False
+        ret <- xGetWindowProperty display ownWindow selectionTarget 0 0 False anyPropertyType
+                           actual_type_return
+                           actual_format_return
+                           nitems_return
+                           bytes_after_return
+                           prop_return
+
+        if ret /= 0
+           then return False
+        else do
+            actual_type   <- peek actual_type_return <&> fromIntegral :: IO Atom
+            _ <- peek prop_return >>= xFree
+            return $ actual_type == incr
 
 getSupportedMimes :: XorgContext -> Atom -> IO [Text]
 getSupportedMimes ctx@XorgContext{..} clipboard =
@@ -116,6 +136,11 @@ getSelection ctx@XorgContext{..} clipboard = do
   target <- internAtom display (toS selectedMime) True
   xConvertSelection display clipboard target selectionTarget ownWindow currentTime
   waitNotify ctx
+  -- incr <- isIncrementalTransfert ctx
+  -- print incr
+  -- _ <- xDeleteProperty display ownWindow selectionTarget
+  -- flush display
+  -- waitNotify ctx
 
   clipboardContent <- getWindowProperty8 display selectionTarget ownWindow
                       <&> B.pack . map fromIntegral . fromMaybe mempty
@@ -145,6 +170,8 @@ getXorgContext :: IO XorgContext
 getXorgContext = do
     display <- openDisplay mempty
     window <- createSimpleWindow display (defaultRootWindow display) 0 0 1 1 0 0 0
+    selectInput display window propertyChangeMask
+
     clipboard <- internAtom display "CLIPBOARD" False
     selTarget <- internAtom display "GREENCLIP" False
     return XorgContext {
@@ -167,8 +194,10 @@ waitNotify XorgContext{..} = allocaXEvent (go display ownWindow)
     waitForEvents display'
     nextEvent display' evPtr
     ev <- getEvent evPtr
-    when (ev_event_type ev /= selectionNotify)
-      (go display' window evPtr)
+    if (ev_event_type ev /= selectionNotify
+          &&  not (ev_event_type ev == propertyNotify && ev_atom ev == selectionTarget && ev_propstate ev == 1))
+      then go display' window evPtr
+      else print ev
 
   waitForEvents display' = do
     nbEvs <- pending display'
