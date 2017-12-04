@@ -7,7 +7,7 @@
 
 module Clipboard where
 
-import           Protolude hiding ((<&>))
+import           Protolude                hiding ((<&>))
 
 import           Graphics.X11.Xlib
 import           Graphics.X11.Xlib.Extras
@@ -138,17 +138,17 @@ getSelection ctx@XorgContext{..} clipboard = do
   waitNotify ctx
   isIncremental <- isIncrementalTransfert ctx
   clipboardContent <- if isIncremental
-                       then getContentIncrementally mempty
-                       else getWindowProperty8 display selectionTarget ownWindow
-                            <&> B.pack . map fromIntegral . fromMaybe mempty
+                      then return mempty -- Incremental use too much CPU, do not handle it
+                      else getWindowProperty8 display selectionTarget ownWindow
+                           <&> B.pack . map fromIntegral . fromMaybe mempty
 
-  windowName <- windowNameOfClipboardOwner ctx clipboard
-  return $ if clipboardContent == mempty
-            then Nothing
-            else Just Selection {
-              appName = windowName
-            , selection = mimeToSelectionType selectedMime clipboardContent
-            }
+  if clipboardContent == mempty
+  then return Nothing
+  else do
+    windowName <- windowNameOfClipboardOwner ctx clipboard
+    return $ Just Selection { appName = windowName
+                            , selection = mimeToSelectionType selectedMime clipboardContent
+                            }
 
  where
    priorities = ["image/png", "image/jpeg", "image/bmp", "UTF8_STRING", "TEXT"]
@@ -162,22 +162,22 @@ getSelection ctx@XorgContext{..} clipboard = do
    mimeToSelectionType "image/bmp" selContent  = BITMAP selContent
    mimeToSelectionType _ selContent            = UTF8 (T.strip $ toS selContent)
 
-   getContentIncrementally acc = do
-     _ <- xDeleteProperty display ownWindow selectionTarget
-     flush display
-     waitNotify ctx
-     content <- getWindowProperty8 display selectionTarget ownWindow
-                <&> B.pack . map fromIntegral . fromMaybe mempty
-     if content == mempty
-        then return acc
-        else getContentIncrementally (acc <> content)
+   -- getContentIncrementally acc = do
+   --   _ <- xDeleteProperty display ownWindow selectionTarget
+   --   flush display
+   --   waitNotify ctx
+   --   content <- getWindowProperty8 display selectionTarget ownWindow
+   --              <&> B.pack . map fromIntegral . fromMaybe mempty
+   --   if content == mempty
+   --      then return acc
+   --      else getContentIncrementally (acc <> content)
 
 
 getXorgContext :: IO XorgContext
 getXorgContext = do
     display <- openDisplay mempty
     window <- createSimpleWindow display (defaultRootWindow display) 0 0 1 1 0 0 0
-    selectInput display window propertyChangeMask
+    -- selectInput display window propertyChangeMask
 
     clipboard <- internAtom display "CLIPBOARD" False
     selTarget <- internAtom display "GREENCLIP" False
@@ -207,9 +207,9 @@ waitNotify XorgContext{..} = allocaXEvent (go display ownWindow)
 
   waitForEvents display' = do
     nbEvs <- pending display'
-    when (nbEvs == 0) $ threadDelay _1us >> waitForEvents display'
+    when (nbEvs == 0) $ threadDelay _10ms >> waitForEvents display'
 
-  _1us = 1000
+  _10ms = 10000
 
 
 
