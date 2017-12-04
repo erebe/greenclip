@@ -136,14 +136,11 @@ getSelection ctx@XorgContext{..} clipboard = do
   target <- internAtom display (toS selectedMime) True
   xConvertSelection display clipboard target selectionTarget ownWindow currentTime
   waitNotify ctx
-  -- incr <- isIncrementalTransfert ctx
-  -- print incr
-  -- _ <- xDeleteProperty display ownWindow selectionTarget
-  -- flush display
-  -- waitNotify ctx
-
-  clipboardContent <- getWindowProperty8 display selectionTarget ownWindow
-                      <&> B.pack . map fromIntegral . fromMaybe mempty
+  isIncremental <- isIncrementalTransfert ctx
+  clipboardContent <- if isIncremental
+                       then getContentIncrementally mempty
+                       else getWindowProperty8 display selectionTarget ownWindow
+                            <&> B.pack . map fromIntegral . fromMaybe mempty
 
   windowName <- windowNameOfClipboardOwner ctx clipboard
   return $ if clipboardContent == mempty
@@ -164,6 +161,16 @@ getSelection ctx@XorgContext{..} clipboard = do
    mimeToSelectionType "image/jpeg" selContent = JPEG selContent
    mimeToSelectionType "image/bmp" selContent  = BITMAP selContent
    mimeToSelectionType _ selContent            = UTF8 (T.strip $ toS selContent)
+
+   getContentIncrementally acc = do
+     _ <- xDeleteProperty display ownWindow selectionTarget
+     flush display
+     waitNotify ctx
+     content <- getWindowProperty8 display selectionTarget ownWindow
+                <&> B.pack . map fromIntegral . fromMaybe mempty
+     if content == mempty
+        then return acc
+        else getContentIncrementally (acc <> content)
 
 
 getXorgContext :: IO XorgContext
@@ -194,10 +201,9 @@ waitNotify XorgContext{..} = allocaXEvent (go display ownWindow)
     waitForEvents display'
     nextEvent display' evPtr
     ev <- getEvent evPtr
-    if (ev_event_type ev /= selectionNotify
+    when (ev_event_type ev /= selectionNotify
           &&  not (ev_event_type ev == propertyNotify && ev_atom ev == selectionTarget && ev_propstate ev == 1))
-      then go display' window evPtr
-      else print ev
+      (go display' window evPtr)
 
   waitForEvents display' = do
     nbEvs <- pending display'
