@@ -109,8 +109,8 @@ runDaemon = forever $ go `catchAll` handleError
     _0_5sec :: Int
     _0_5sec = 5 * 100000
 
-    _1sec :: Int
-    _1sec = 1000000
+    _5sec :: Int
+    _5sec = 5000000
 
     go = do
       history <- getHistory
@@ -153,7 +153,7 @@ runDaemon = forever $ go `catchAll` handleError
       innerloop getSelections' history'
 
     getSelectionFrom :: IO (Maybe Clip.Selection) -> IO (Maybe Clip.Selection)
-    getSelectionFrom = fmap join . timeout _1sec
+    getSelectionFrom = fmap join . timeout _5sec
 
     purgeSelection (Clip.Selection _ (Clip.PNG txt)) = purge (toS txt <> ".png")
     purgeSelection (Clip.Selection _ (Clip.JPEG txt)) = purge (toS txt <> ".jpeg")
