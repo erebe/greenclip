@@ -240,7 +240,7 @@ run cmd = do
   case cmd of
     DAEMON   -> runReaderT runDaemon cfg
     PRINT    -> runReaderT printHistoryForRofi cfg
-    CLEAR    -> undefined --runReaderT (storeHistory mempty) cfg
+    CLEAR    -> runReaderT (storeHistory mempty) cfg
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
     COPY sel -> runReaderT (advertiseSelection sel) cfg
