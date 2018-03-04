@@ -27,7 +27,7 @@ Keeps track of your history of selections to quickly switch between them
 
 Alternatively if you are using Archlinux you can install the package from AUR
 
-``pacman -S greenclip``
+``pacman -S rofi-greenclip``
 
 PS: If you want, you can add a permanent list of selections to be added to your current history. Go see the config file
 
