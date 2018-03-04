@@ -19,7 +19,7 @@ Keeps track of your history of selections to quickly switch between them
   + Permanently set some selections to added at the end (set `staticHistoryPath = your/file/with/static/entries` in the config file)
   + Merge X Primary selection with clipboard selection (set `usePrimarySelectionAsInput = True` in the config file)
 
-**Installation:**
+## Installation
 
 1. It's a static binary so drop it anywhere in your $PATH env
 
@@ -32,7 +32,7 @@ Alternatively if you are using Archlinux you can install the package from AUR
 PS: If you want, you can add a permanent list of selections to be added to your current history. Go see the config file
 
 
-**Usage:**
+## Usage
 
 Greenclip is intended to be used with [rofi](https://github.com/DaveDavenport/rofi)
 
@@ -41,8 +41,9 @@ Greenclip is intended to be used with [rofi](https://github.com/DaveDavenport/ro
 3. The entry that you have selected will be in your clipboard now
 4. Configuration file can be found in ```.config/greenclip.cfg```
 
-**Compilation:**
+## Building the project
 
 1. Get [stack](https://docs.haskellstack.org/en/stable/README/) for Haskell
 2. stack init && stack install
 
+or you can look at the .travis.yml file
