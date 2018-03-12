@@ -53,7 +53,7 @@ or you can look at the .travis.yml file
 
 Q. Greenclip does not copy selection !
 
-A. Greenclip cannot run alongside with other clipboard manager. If you have already one activated (there is one by default in KDE), you have first to disable it before trying to run greenclip
+A. Greenclip cannot run alongside other clipboard manager. If you have already one activated (there is one by default in KDE), you have first to disable it before trying to run greenclip
 
 ---------
 
