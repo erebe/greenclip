@@ -47,3 +47,38 @@ Greenclip is intended to be used with [rofi](https://github.com/DaveDavenport/ro
 2. stack init && stack install
 
 or you can look at the .travis.yml file
+
+
+## FAQ
+
+Q. Greenclip does not copy selection !
+
+A. Greenclip cannot run alongside with other clipboard manager. If you have already one activated (there is one by default in KDE), you have first to disable it before trying to run greenclip
+
+---------
+
+Q. I cannot paste images !
+
+A. You can use the 3.0-beta of greenclip in order to get support for selection of small images (~ <500 kb)
+
+----------
+
+Q. I want to blacklist some applications !
+
+A. Use the 3.0-beta of greenclip and you will find in your config file a section for blacklisting applications.
+   You can run greenclip daemon in a terminal to find what is the name of the application who has the current selection.
+   Be aware that a lot of application does not name their clipboard process/window, so it will be empty most of the time.
+   Be aware also, that if you use an electron application (like slack i.e) you will get a generic name like "Chromium clipboard"
+   
+----------
+
+Q. I want to paste selection directly after selecting them !
+
+A. This is not possible as when you invoke rofi, you lose focus of your current window and there is no way to find it back (from greenclip point of view)
+   Nonetheless, you can emulate the feature with xdotool `rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}' ; sleep 0.5; xdotool type (xclip -o -selection clipboard)`
+
+----------
+
+Q. I want to thank you for greenclip !
+
+A. Give a star to this repository
