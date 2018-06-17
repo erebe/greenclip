@@ -59,13 +59,13 @@ A. Greenclip cannot run alongside other clipboard manager. If you have already o
 
 Q. I cannot paste images !
 
-A. You can use the 3.0-beta of greenclip in order to get support for selection of small images (~ <500 kb)
+A. You can only keep in your history small images  (~ <500 kb). I disabled the support for bigger images as it will turn your CPU into a heater for winter.
 
 ----------
 
 Q. I want to blacklist some applications !
 
-A. Use the 3.0-beta of greenclip and you will find in your config file a section for blacklisting applications.
+A. There is in your config file a section for blacklisting applications.
    You can run greenclip daemon in a terminal to find what is the name of the application who has the current selection.
    Be aware that a lot of application does not name their clipboard process/window, so it will be empty most of the time.
    Be aware also, that if you use an electron application (like slack i.e) you will get a generic name like "Chromium clipboard"
