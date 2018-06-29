@@ -41,19 +41,18 @@ Greenclip is intended to be used with [rofi](https://github.com/DaveDavenport/ro
 3. The entry that you have selected will be in your clipboard now
 4. Configuration file can be found in ```.config/greenclip.cfg```
 
+## Migrating from 2.x version to 3.x one
+
+1. Kill all greenclip process already running
+2. Delete your old config file and old cache file (in ~/.cache/greenclip*)
+3. Start the new version of greenclip
+
 ## Building the project
 
 1. Get [stack](https://docs.haskellstack.org/en/stable/README/) for Haskell
 2. stack init && stack install
 
 or you can look at the .travis.yml file
-
-## Migrating from 2.x version to 3.x one
-
-1. Kill all greenclip process running
-2. Delete your old config file and old cache file (in ~/.cache/greenclip*)
-3. Start the new version of greenclip
-
 
 ## FAQ
 
