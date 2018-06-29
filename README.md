@@ -48,6 +48,12 @@ Greenclip is intended to be used with [rofi](https://github.com/DaveDavenport/ro
 
 or you can look at the .travis.yml file
 
+## Migrating from 2.x version to 3.x one
+
+1. Kill all greenclip process running
+2. Delete your old config file and old cache file (in ~/.cache/greenclip*)
+3. Start the new version of greenclip
+
 
 ## FAQ
 
