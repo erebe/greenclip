@@ -3,9 +3,9 @@
 -- see: https://github.com/sol/hpack
 
 name:           greenclip
-version:        2.0.0
+version:        3.0.2
 synopsis:       Simple clipboard manager to be integrated with rofi
-description:    Please see README.md
+description:    Simple clipboard manager to be integrated with rofi - Please see README.md
 category:       Linux Desktop
 homepage:       https://github.com/erebe/greenclip#readme
 author:         Erèbe - Romain GERARD
@@ -25,7 +25,7 @@ executable greenclip
       src
   ghc-options: -Wall -O3
   build-depends:
-      base
+      base >= 4 && < 4.11.0.0
     , protolude
     , exceptions
     , bytestring
