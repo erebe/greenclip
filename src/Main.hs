@@ -21,6 +21,7 @@ import qualified Data.Vector           as V
 import           Lens.Micro
 import           Lens.Micro.Mtl
 import qualified System.Directory      as Dir
+import           System.Posix.Files    (setFileMode)
 import           System.Environment    (lookupEnv)
 import           System.IO             (IOMode (..), hClose, hGetContents,
                                         openFile)
@@ -70,6 +71,7 @@ storeHistory :: (MonadIO m, MonadReader Config m) => ClipHistory -> m ()
 storeHistory history = do
   storePath <- view $ to (toS . historyPath)
   liftIO $ writeH storePath history
+  liftIO $ setFileMode storePath 0o600
   where
     writeH storePath = B.writeFile storePath . toS . encode . V.toList
 
