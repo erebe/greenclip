@@ -18,6 +18,8 @@ Keeps track of your history of selections to quickly switch between them
   + Integrated with [rofi](https://github.com/DaveDavenport/rofi)
   + Permanently set some selections to added at the end (set `staticHistoryPath = your/file/with/static/entries` in the config file)
   + Merge X Primary selection with clipboard selection (set `usePrimarySelectionAsInput = True` in the config file)
+  + Blacklist some applications (see `I want to blacklist some applications !` in the FAQ section)
+  + Copy small images
 
 ## Installation
 
