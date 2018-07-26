@@ -71,7 +71,6 @@ storeHistory :: (MonadIO m, MonadReader Config m) => ClipHistory -> m ()
 storeHistory history = do
   storePath <- view $ to (toS . historyPath)
   liftIO $ writeH storePath history
-  liftIO $ setFileMode storePath 0o600
   where
     writeH storePath = B.writeFile storePath . toS . encode . V.toList
 
@@ -105,8 +104,16 @@ appendToHistory sel history' =
           maxLen <- view $ to maxHistoryLength
           return $ V.splitAt maxLen . V.cons selection $ V.filter (\ori -> Clip.selection ori /= Clip.selection selection) history
 
+
+setHistoryFilePermission :: (MonadIO m, MonadReader Config m) => m ()
+setHistoryFilePermission = do
+  storePath <- view $ to (toS . historyPath)
+  fileExist <- liftIO $ Dir.doesFileExist storePath
+  when (not fileExist) (storeHistory mempty)
+  liftIO $ setFileMode storePath 0o600
+
 runDaemon:: (MonadIO m, MonadCatch m, MonadReader Config m) => m ()
-runDaemon = forever $ go `catchAll` handleError
+runDaemon = setHistoryFilePermission >> (forever $ go `catchAll` handleError)
   where
     _0_5sec :: Int
     _0_5sec = 5 * 100000
