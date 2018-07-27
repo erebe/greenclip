@@ -37,11 +37,13 @@ resolver: lts-12.2
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
+#- 'X11-1.9'
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - 'wordexp-0.2.2'
+- 'X11-1.8'
 
 # Override default flag values for local packages and extra-deps
 flags: {}

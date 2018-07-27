@@ -1,9 +1,10 @@
-FROM alpine:3.6 as builder
+FROM alpine:3.8 as builder
 MAINTAINER github@erebe.eu
 
 RUN apk --no-cache add --repository http://dl-cdn.alpinelinux.org/alpine/edge/community \
-        ca-certificates git ghc upx curl musl-dev gmp-dev zlib-dev pcre-dev libx11-dev libxrandr-dev
-RUN curl -sSL https://get.haskellstack.org/ | sh
+        ca-certificates git ghc=8.4.3-r0 upx curl musl-dev gmp-dev zlib-dev pcre-dev libx11-dev libxrandr-dev
+RUN curl -L https://github.com/commercialhaskell/stack/releases/download/v1.6.5/stack-1.6.5-linux-x86_64-static.tar.gz | tar -xz ; \
+    cp stack-1.6.5-linux-x86_64-static/stack /usr/bin/
 
 COPY stack.yaml /mnt
 COPY *.cabal /mnt
@@ -21,7 +22,7 @@ RUN upx --ultra-brute /root/.local/bin/greenclip
 
 
 
-FROM alpine:latest as runner
+FROM alpine:3.8 as runner
 MAINTAINER github@erebe.eu
 
 WORKDIR /root
