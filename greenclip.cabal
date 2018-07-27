@@ -25,7 +25,7 @@ executable greenclip
       src
   ghc-options: -Wall -O3
   build-depends:
-      base >= 4 && < 4.11.0.0
+      base >= 4 && < 5
     , protolude
     , exceptions
     , bytestring
