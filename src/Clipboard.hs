@@ -8,6 +8,7 @@
 module Clipboard where
 
 import           Protolude                hiding ((<&>))
+import           Unsafe                   (unsafeIndex)
 
 import           Graphics.X11.Xlib
 import           Graphics.X11.Xlib.Extras
@@ -44,6 +45,8 @@ data XorgContext = XorgContext {
   , defaultClipboard :: Atom
   , primaryClipboard :: Atom
   , selectionTarget  :: Atom
+  , mimesPriorities  :: [Atom]
+  , defaultMime      :: Atom
 } deriving (Show)
 
 
@@ -86,7 +89,7 @@ isIncrementalTransfert XorgContext{..}  =
             _ <- peek prop_return >>= xFree
             return $ actual_type == incr
 
-getSupportedMimes :: XorgContext -> Atom -> IO [Text]
+getSupportedMimes :: XorgContext -> Atom -> IO [Atom]
 getSupportedMimes ctx@XorgContext{..} clipboard =
     alloca $ \actual_type_return ->
     alloca $ \actual_format_return ->
@@ -110,8 +113,8 @@ getSupportedMimes ctx@XorgContext{..} clipboard =
                     actual_format <- peek actual_format_return <&> fromIntegral :: IO Atom
                     nitems        <- peek nitems_return <&> fromIntegral
                     getprop prop_ptr nitems actual_format
-        let atoms = filter (/= 0) $ fromMaybe mempty ret2
-        fmap (fmap toS) (getAtomNames display atoms)
+        return $ fromMaybe mempty ret2
+
   where
     getprop prop_ptr nitems actual_format
         | actual_format == 0    = return Nothing -- Property not found
@@ -132,10 +135,9 @@ getPrimarySelection ctx@XorgContext{..} =
 getSelection :: XorgContext -> Atom -> IO (Maybe Selection)
 getSelection ctx@XorgContext{..} clipboard = do
   mimes <- getSupportedMimes ctx clipboard
-  let selectedMime = chooseSelectionType mimes
+  let targetMime = chooseSelectionType mimes
 
-  target <- internAtom display (toS selectedMime) True
-  xConvertSelection display clipboard target selectionTarget ownWindow currentTime
+  xConvertSelection display clipboard targetMime selectionTarget ownWindow currentTime
   waitNotify ctx
   isIncremental <- isIncrementalTransfert ctx
   clipboardContent <- if isIncremental
@@ -148,20 +150,19 @@ getSelection ctx@XorgContext{..} clipboard = do
   else do
     windowName <- windowNameOfClipboardOwner ctx clipboard
     return $ Just Selection { appName = windowName
-                            , selection = mimeToSelectionType selectedMime clipboardContent
+                            , selection = mimeToSelectionType targetMime clipboardContent
                             }
 
  where
-   priorities = ["image/png", "image/jpeg", "image/bmp", "UTF8_STRING", "TEXT"]
-
    chooseSelectionType mimes =
-     let selectedMime = msum $ (\mime -> find (== mime) mimes) <$> priorities
-     in fromMaybe "UTF8_STRING" selectedMime
+     let selectedMime = msum $ (\mime -> find (== mime) mimes) <$> mimesPriorities
+     in fromMaybe defaultMime selectedMime
 
-   mimeToSelectionType "image/png" selContent  = PNG selContent
-   mimeToSelectionType "image/jpeg" selContent = JPEG selContent
-   mimeToSelectionType "image/bmp" selContent  = BITMAP selContent
-   mimeToSelectionType _ selContent            = UTF8 (T.strip $ toS selContent)
+   mimeToSelectionType mimeTarget selContent =
+     if      mimeTarget == unsafeIndex mimesPriorities 0 then PNG selContent
+     else if mimeTarget == unsafeIndex mimesPriorities 1 then JPEG selContent
+     else if mimeTarget == unsafeIndex mimesPriorities 2 then BITMAP selContent
+     else UTF8 (T.strip $ toS selContent)
 
    -- getContentIncrementally acc = do
    --   _ <- xDeleteProperty display ownWindow selectionTarget
@@ -182,12 +183,16 @@ getXorgContext = do
 
     clipboard <- internAtom display "CLIPBOARD" False
     selTarget <- internAtom display "GREENCLIP" False
+    priorities <- traverse (\atomName -> internAtom display atomName False) ["image/png", "image/jpeg", "image/bmp", "UTF8_STRING", "TEXT"]
+    defaultM <- internAtom display "UTF8_STRING" False
     return XorgContext {
         display = display
       , ownWindow = window
       , defaultClipboard = clipboard
       , primaryClipboard = pRIMARY
       , selectionTarget = selTarget
+      , mimesPriorities = priorities
+      , defaultMime = defaultM
     }
 
 destroyXorgContext :: XorgContext -> IO ()
