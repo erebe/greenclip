@@ -23,7 +23,6 @@ import           System.IO                (hClose, stderr, stdin, stdout)
 import           System.Posix.Process     (forkProcess)
 
 import           Data.ByteString          (unpack)
-import qualified Data.Text                as T
 import           Foreign                  (alloca, castPtr, peek, peekArray)
 import           Foreign.C.Types          (CUChar)
 import           Foreign.Marshal.Array    (withArrayLen)
@@ -162,7 +161,7 @@ getSelection ctx@XorgContext{..} clipboard = do
      if      mimeTarget == unsafeIndex mimesPriorities 0 then PNG selContent
      else if mimeTarget == unsafeIndex mimesPriorities 1 then JPEG selContent
      else if mimeTarget == unsafeIndex mimesPriorities 2 then BITMAP selContent
-     else UTF8 (T.strip $ toS selContent)
+     else UTF8 $ toS selContent
 
    -- getContentIncrementally acc = do
    --   _ <- xDeleteProperty display ownWindow selectionTarget

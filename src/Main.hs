@@ -40,6 +40,7 @@ data Config = Config
   , imageCachePath             :: Text
   , usePrimarySelectionAsInput :: Bool
   , blacklistedApps            :: [Text]
+  , trimSpaceFromSelection     :: Bool
   } deriving (Show, Read)
 
 type ClipHistory = Vector Clip.Selection
@@ -76,12 +77,14 @@ storeHistory history = do
 
 
 appendToHistory :: (MonadIO m, MonadReader Config m) => Clip.Selection -> ClipHistory -> m (ClipHistory, ClipHistory)
-appendToHistory sel history' =
+appendToHistory sel history' = do
+  trimSelection <- view $ to trimSpaceFromSelection
   case sel of
-    Clip.Selection _ (Clip.UTF8 _) -> appendGeneric sel history'
+    Clip.Selection appName (Clip.UTF8 txt) -> appendGeneric (if trimSelection then Clip.Selection appName (Clip.UTF8 (T.strip txt)) else sel) history'
     Clip.Selection _ (Clip.PNG bytes) -> appendImage Clip.PNG ".png" bytes
     Clip.Selection _ (Clip.JPEG bytes) -> appendImage Clip.JPEG ".jpeg" bytes
     Clip.Selection _ (Clip.BITMAP bytes) -> appendImage Clip.BITMAP ".bmp" bytes
+
 
   where
     appendImage imgCtr extension bytes = do
@@ -217,10 +220,19 @@ getConfig = do
   let cfgPath = home <> "/.config/greenclip.cfg"
 
   cfgStr <- readFile cfgPath `catchAll` const mempty
-  let unprettyCfg = cfgStr & T.strip . T.replace "\n" "" . toS
-  let cfg = fromMaybe defaultConfig (readMaybe $ toS unprettyCfg)
-  let prettyCfg = show cfg & T.replace "," ",\n" . T.replace "{" "{\n " . T.replace "}" "\n}"
-  writeFile cfgPath prettyCfg
+
+  let unprettyCfg' = cfgStr & T.strip . T.replace "\n" "" . toS
+  let unprettyCfg = if "trimSpaceFromSelection" `T.isInfixOf` unprettyCfg'
+                      then unprettyCfg'
+                      else T.replace "}" ", trimSpaceFromSelection = True }" unprettyCfg'
+  let cfgMaybe = readMaybe $ toS unprettyCfg
+  let cfg = fromMaybe defaultConfig cfgMaybe
+
+  -- Write back the config file if the current one was invalid
+  _ <- if isNothing cfgMaybe || unprettyCfg /= unprettyCfg'
+        then let prettyCfg = show cfg & T.replace "," ",\n" . T.replace "{" "{\n " . T.replace "}" "\n}"
+             in writeFile cfgPath prettyCfg
+        else return ()
 
   historyPath' <- expandHomeDir $ cfg ^. to historyPath
   staticHistoryPath' <- expandHomeDir $ cfg ^. to staticHistoryPath
@@ -232,7 +244,7 @@ getConfig = do
                }
 
   where
-    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/" False []
+    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/" False [] True
     expandHomeDir str = (toS . fromMaybe (toS str) . listToMaybe <$> wordexp (toS str)) `catchAll` (\_ -> return $ toS str)
 
 
