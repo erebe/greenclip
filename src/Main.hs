@@ -15,6 +15,7 @@ import           Control.Monad.Catch   (MonadCatch, catchAll)
 import           Data.Binary           (decode, encode)
 import qualified Data.ByteString       as B
 import           Data.Hashable         (hash)
+import           Data.List             (dropWhileEnd)
 import qualified Data.Text             as T
 import           Data.Vector           (Vector)
 import qualified Data.Vector           as V
@@ -90,7 +91,7 @@ appendToHistory sel history' = do
     appendImage imgCtr extension bytes = do
       cachePth <- view (to imageCachePath)
       let imgHash = show $ hash bytes
-      let imgPath = toS $ cachePth <> imgHash <> extension
+      let imgPath = toS $ cachePth <> "/" <> imgHash <> extension
       _ <- liftIO $ writeImage imgPath bytes
       appendGeneric (sel {Clip.selection = imgCtr $ toS imgHash}) history'
 
@@ -98,7 +99,7 @@ appendToHistory sel history' = do
       fileExist <- Dir.doesFileExist path
       if fileExist
         then return False
-        else B.writeFile path bytes >> return True
+        else B.writeFile path bytes >> setFileMode path 0o600 >> return True
 
     appendGeneric selection history =
       if maybe False (\sel' -> Clip.selection sel' == Clip.selection selection) (history V.!? 0)
@@ -115,8 +116,15 @@ setHistoryFilePermission = do
   when (not fileExist) (storeHistory mempty)
   liftIO $ setFileMode storePath 0o600
 
+prepareDirs :: (MonadIO m, MonadReader Config m) => m ()
+prepareDirs = do
+  historyFile <- view $ to (T.unpack . historyPath)
+  imgDir <- view $ to (T.unpack . imageCachePath)
+  let dirs = [imgDir, dropWhileEnd (/= '/') historyFile]
+  mapM_ (liftIO . Dir.createDirectoryIfMissing True) dirs
+
 runDaemon:: (MonadIO m, MonadCatch m, MonadReader Config m) => m ()
-runDaemon = setHistoryFilePermission >> (forever $ go `catchAll` handleError)
+runDaemon = prepareDirs >> setHistoryFilePermission >> (forever $ go `catchAll` handleError)
   where
     _0_5sec :: Int
     _0_5sec = 5 * 100000
@@ -191,9 +199,9 @@ toRofiStr (Clip.Selection appName (Clip.JPEG txt)) = "image/jpeg " <> appName <>
 toRofiStr (Clip.Selection appName (Clip.BITMAP txt)) = "image/bmp " <> appName <> " " <> toS txt
 
 fromRofiStr :: Text -> Text -> IO Clip.Selection
-fromRofiStr cachePth txt@(T.isPrefixOf "image/png " -> True) = B.readFile (toS $ cachePth <> getHash txt <> ".png") <&> Clip.Selection "greenclip" . Clip.PNG
-fromRofiStr cachePth txt@(T.isPrefixOf "image/jpeg " -> True) = B.readFile (toS $ cachePth <> getHash txt <> ".jpeg") <&> Clip.Selection "greenclip" . Clip.JPEG
-fromRofiStr cachePth txt@(T.isPrefixOf "image/bmp " -> True) = B.readFile (toS $ cachePth <> getHash txt <> ".bmp") <&> Clip.Selection "greenclip" . Clip.BITMAP
+fromRofiStr cachePth txt@(T.isPrefixOf "image/png " -> True) = B.readFile (toS $ cachePth <> "/" <> getHash txt <> ".png") <&> Clip.Selection "greenclip" . Clip.PNG
+fromRofiStr cachePth txt@(T.isPrefixOf "image/jpeg " -> True) = B.readFile (toS $ cachePth <> "/" <> getHash txt <> ".jpeg") <&> Clip.Selection "greenclip" . Clip.JPEG
+fromRofiStr cachePth txt@(T.isPrefixOf "image/bmp " -> True) = B.readFile (toS $ cachePth <> "/" <> getHash txt <> ".bmp") <&> Clip.Selection "greenclip" . Clip.BITMAP
 fromRofiStr _ txt = return $ Clip.Selection "greenclip" (Clip.UTF8 (T.map (\c -> if c == '\xA0' then '\n' else c) txt))
 
 getHash :: Text -> Text
@@ -244,7 +252,7 @@ getConfig = do
                }
 
   where
-    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/" False [] True
+    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/greenclip/" False [] True
     expandHomeDir str = (toS . fromMaybe (toS str) . listToMaybe <$> wordexp (toS str)) `catchAll` (\_ -> return $ toS str)
 
 
