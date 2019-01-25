@@ -82,7 +82,7 @@ A. There is in your config file a section for blacklisting applications.
 Q. I want to paste selection directly after selecting them !
 
 A. This is not possible as when you invoke rofi, you lose focus of your current window and there is no way to find it back (from greenclip point of view)
-   Nonetheless, you can emulate the feature with xdotool `rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}' ; sleep 0.5; xdotool type (xclip -o -selection clipboard)`
+   Nonetheless, you can emulate the feature with xdotool `rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}' ; sleep 0.5; xdotool type $(xclip -o -selection clipboard)`
    
    or look at this issue for a more complete solution https://github.com/erebe/greenclip/issues/27
 
