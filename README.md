@@ -5,7 +5,7 @@
 ## Description
 
 Recyle your clipboard selections with greenclip and don't waste your time anymore
-to reselect things other and other.
+to reselect things over and over.
 
 **Purpose:**
 Keeps track of your history of selections to quickly switch between them
