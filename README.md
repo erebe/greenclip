@@ -29,7 +29,7 @@ Keeps track of your history of selections to quickly switch between them
 
 Alternatively if you are using Archlinux you can install the package from AUR
 
-``pacman -S rofi-greenclip``
+``yay rofi-greenclip``
 
 PS: If you want, you can add a permanent list of selections to be added to your current history. Go see the config file
 
@@ -76,14 +76,14 @@ A. There is in your config file a section for blacklisting applications.
    You can run greenclip daemon in a terminal to find what is the name of the application who has the current selection.
    Be aware that a lot of application does not name their clipboard process/window, so it will be empty most of the time.
    Be aware also, that if you use an electron application (like slack i.e) you will get a generic name like "Chromium clipboard"
-   
+
 ----------
 
 Q. I want to paste selection directly after selecting them !
 
 A. This is not possible as when you invoke rofi, you lose focus of your current window and there is no way to find it back (from greenclip point of view)
    Nonetheless, you can emulate the feature with xdotool `rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}' ; sleep 0.5; xdotool type $(xclip -o -selection clipboard)`
-   
+
    or look at this issue for a more complete solution https://github.com/erebe/greenclip/issues/27
 
 ----------
