@@ -9,7 +9,7 @@
 {-# LANGUAGE OverloadedStrings     #-}
 
 
-module Parser where
+module Config (Config(..), Pos(..), parseConfig) where
 
 import           Protolude             hiding (readFile, to, (<&>), (&))
 
@@ -20,13 +20,88 @@ import           Lens.Micro
 import           Control.Applicative.Combinators
 import           Control.Applicative.Permutations
 
--- The Parser -----------------------------------------------------------------
+-- The Configuration ----------------------------------------------------------
+
+data Config = Config
+  { maxHistoryLength           :: Int
+  , historyPath                :: Text
+  , staticHistoryPath          :: Text
+  , imageCachePath             :: Text
+  , usePrimarySelectionAsInput :: Bool
+  , blacklistedApps            :: [Text]
+  , trimSpaceFromSelection     :: Bool
+  } deriving (Show, Read)
 
 data Pos = Pos
          { line      :: Integer -- The line of the character
          , character :: Integer -- The position in the line of the character
          , offset    :: Integer -- The position in the global flux
          } deriving (Show)
+
+parseConfig :: ByteString -> Either Pos Config
+parseConfig file = case runParser file configP of
+                     Left pos   -> Left pos
+                     Right endo -> Right $ appEndo endo initConfig
+  where initConfig :: Config
+        initConfig = Config 0 "" "" "" True [] True
+
+-- Parser configuration -------------------------------------------------------
+
+maxHistoryLengthLens :: Lens' Config Int
+maxHistoryLengthLens = lens maxHistoryLength $ \pc i -> pc { maxHistoryLength = i }
+
+historyPathLens :: Lens' Config Text
+historyPathLens = lens historyPath $ \pc t -> pc { historyPath = t }
+
+staticHistoryPathLens :: Lens' Config Text
+staticHistoryPathLens = lens staticHistoryPath $ \pc t -> pc { staticHistoryPath = t }
+
+imageCachePathLens :: Lens' Config Text
+imageCachePathLens = lens imageCachePath $ \pc t -> pc { imageCachePath = t }
+
+usePrimarySelectionAsInputLens :: Lens' Config Bool
+usePrimarySelectionAsInputLens = lens usePrimarySelectionAsInput
+                                    $ \pc b -> pc { usePrimarySelectionAsInput = b }
+
+blacklistedAppsLens :: Lens' Config [Text]
+blacklistedAppsLens = lens blacklistedApps $ \pc l -> pc { blacklistedApps = l }
+
+trimSpaceFromSelectionLens :: Lens' Config Bool
+trimSpaceFromSelectionLens = lens trimSpaceFromSelection $ \pc b -> pc { trimSpaceFromSelection = b }
+
+data ConfigMemberParser where
+    PCMP :: Parser a       -- How to parse the config option
+         -> Lens' Config a -- How to set it
+         -> Text           -- The default name for this config option
+         -> [ Text ]       -- Aliases for the config option
+         -> Maybe a        -- An eventual default value
+         -> ConfigMemberParser
+
+configOptions :: [ConfigMemberParser]
+configOptions = [ PCMP intP            maxHistoryLengthLens           "maxHistoryLength" 
+                       [ ]
+                       $ Just 50
+                , PCMP stringP         historyPathLens                "historyPath" 
+                       [ ]
+                       $ Just "~/.cache/greenclip.history"
+                , PCMP stringP         staticHistoryPathLens          "staticHistoryPath"
+                       [ ]
+                       $ Just "~/.cache/greenclip.staticHistory"
+                , PCMP stringP         imageCachePathLens             "imageCachePath"
+                       [ ]
+                       $ Just "/tmp/greenclip/"
+                , PCMP boolP           usePrimarySelectionAsInputLens "usePrimarySelectionAsInput"
+                       [ ]
+                       $ Just False
+                , PCMP (listP stringP) blacklistedAppsLens            "blacklistedApps"
+                       [ ]
+                       $ Just [ ]
+                , PCMP boolP           trimSpaceFromSelectionLens     "trimSpaceFromSelection"
+                       [ ]
+                       $ Just True
+                ]
+
+-- The Parser -----------------------------------------------------------------
 
 isNewLine :: Char -> Bool
 isNewLine w = w == '\n'
@@ -91,76 +166,7 @@ instance Monad Parser where
 
 instance MonadPlus Parser where
 
--- Parser configuration -------------------------------------------------------
-
-data PConfig = PC
-             { maxHistoryLength           :: Maybe Int
-             , historyPath                :: Maybe Text
-             , staticHistoryPath          :: Maybe Text
-             , imageCachePath             :: Maybe Text
-             , usePrimarySelectionAsInput :: Maybe Bool
-             , blacklistedApps            :: Maybe [Text]
-             , trimSpaceFromSelection     :: Maybe Bool
-             } deriving (Show)
-
-maxHistoryLengthLens :: Lens' PConfig (Maybe Int)
-maxHistoryLengthLens = lens maxHistoryLength $ \pc i -> pc { maxHistoryLength = i }
-
-historyPathLens :: Lens' PConfig (Maybe Text)
-historyPathLens = lens historyPath $ \pc t -> pc { historyPath = t }
-
-staticHistoryPathLens :: Lens' PConfig (Maybe Text)
-staticHistoryPathLens = lens staticHistoryPath $ \pc t -> pc { staticHistoryPath = t }
-
-imageCachePathLens :: Lens' PConfig (Maybe Text)
-imageCachePathLens = lens imageCachePath $ \pc t -> pc { imageCachePath = t }
-
-usePrimarySelectionAsInputLens :: Lens' PConfig (Maybe Bool)
-usePrimarySelectionAsInputLens = lens usePrimarySelectionAsInput
-                                    $ \pc b -> pc { usePrimarySelectionAsInput = b }
-
-blacklistedAppsLens :: Lens' PConfig (Maybe [Text])
-blacklistedAppsLens = lens blacklistedApps $ \pc l -> pc { blacklistedApps = l }
-
-trimSpaceFromSelectionLens :: Lens' PConfig (Maybe Bool)
-trimSpaceFromSelectionLens = lens trimSpaceFromSelection $ \pc b -> pc { trimSpaceFromSelection = b }
-
-data PConfigMemberParser where
-    PCMP :: Parser a                -- How to parse the config option
-         -> Lens' PConfig (Maybe a) -- How to set it
-         -> Text                    -- The default name for this config option
-         -> [ Text ]                -- Aliases for the config option
-         -> Maybe a                 -- An eventual default value
-         -> PConfigMemberParser
-
-defPConfig :: PConfig
-defPConfig = PC Nothing Nothing Nothing Nothing Nothing Nothing Nothing
-
-configOptions :: [PConfigMemberParser]
-configOptions = [ PCMP intP            maxHistoryLengthLens           "maxHistoryLength" 
-                       [ ]
-                       $ Just 50
-                , PCMP stringP         historyPathLens                "historyPath" 
-                       [ ]
-                       $ Just "~/.cache/greenclip.history"
-                , PCMP stringP         staticHistoryPathLens          "staticHistoryPath"
-                       [ ]
-                       $ Just "~/.cache/greenclip.staticHistory"
-                , PCMP stringP         imageCachePathLens             "imageCachePath"
-                       [ ]
-                       $ Just "/tmp/greenclip/"
-                , PCMP boolP           usePrimarySelectionAsInputLens "usePrimarySelectionAsInput"
-                       [ ]
-                       $ Just False
-                , PCMP (listP stringP) blacklistedAppsLens            "blacklistedApps"
-                       [ ]
-                       $ Just [ ]
-                , PCMP boolP           trimSpaceFromSelectionLens     "trimSpaceFromSelection"
-                       [ ]
-                       $ Just True
-                ]
-
--- The Parser -----------------------------------------------------------------
+-- Config Parser --------------------------------------------------------------
 
 condP :: (Char -> Bool) -> Parser Char
 condP cond = getP >>= \r -> guard (cond r) >> return r
@@ -179,12 +185,6 @@ whiteP = void $ condP $ \c -> c == ' ' || c == '\t' || c == '\n' || c == '\r'
 
 whitesP :: Parser ()
 whitesP = skipMany $ tryP whiteP
-
-spaceP :: Parser ()
-spaceP = void $ condP $ \c -> c == ' ' || c == '\t'
-
-spacesP :: Parser ()
-spacesP = skipMany $ tryP spaceP
 
 charP :: Char -> Parser ()
 charP c = void $ condP (==c)
@@ -212,33 +212,30 @@ boolP :: Parser Bool
 boolP = ( tryP (textP "True") >> return True  )
     <|> ( textP "False"       >> return False )
 
-newlineP :: Parser ()
-newlineP = getP >>= \c -> guard (c == '\n')
-
-pcmpP :: PConfigMemberParser -> Parser (Endo PConfig)
+pcmpP :: ConfigMemberParser -> Parser (Endo Config)
 pcmpP (PCMP parser lense name aliases _) = do
     foldl (\p alias -> p <|> tryP (textP alias)) (tryP $ textP name) aliases
     whitesP
     charP '='
     whitesP
     r <- parser
-    return $ Endo $ \pc -> pc & lense ?~ r
+    return $ Endo $ \pc -> pc & lense .~ r
 
-pcmpPerm :: PConfigMemberParser -> Permutation Parser (Endo PConfig)
+pcmpPerm :: ConfigMemberParser -> Permutation Parser (Endo Config)
 pcmpPerm pcmp@(PCMP _ lense _ _ mdef) =
     case mdef of
       Nothing  -> toPermutation $ tryP $ pcmpP pcmp
       Just def -> toPermutationWithDefault (mkDef def lense) $ tryP $ pcmpP pcmp
-  where mkDef :: a -> Lens' PConfig (Maybe a) -> Endo PConfig
-        mkDef df ls = Endo $ \pc -> pc & ls ?~ df
+  where mkDef :: a -> Lens' Config a -> Endo Config
+        mkDef df ls = Endo $ \pc -> pc & ls .~ df
 
-optionsP :: [PConfigMemberParser] -> Permutation Parser (Endo PConfig)
+optionsP :: [ConfigMemberParser] -> Permutation Parser (Endo Config)
 optionsP (hopt : topts) = foldl (\perm pcmp -> (<>) <$> pcmpPerm pcmp <*> perm)
                                 (pcmpPerm hopt) topts
 optionsP [] = toPermutation empty -- Won't happen
 
-oldConfigP :: Parser (Endo PConfig)
-oldConfigP = do
+configP :: Parser (Endo Config)
+configP = do
     textP "Config"
     whitesP
     result <- between (charP '{' >> whitesP) (whitesP >> charP '}')

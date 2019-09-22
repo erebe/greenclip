@@ -43,7 +43,7 @@ executable greenclip
     , X11 >= 1.6
   other-modules:
       Clipboard
-      Parser
+    , Config
   default-language: Haskell2010
   default-extensions: Strict
   pkgconfig-depends: x11, xcb, xau, xdmcp

@@ -30,19 +30,10 @@ import           System.Timeout        (timeout)
 import           System.Wordexp.Simple (wordexp)
 
 import qualified Clipboard             as Clip
+import           Config
 
 
 data Command = DAEMON | PRINT | COPY Text | CLEAR | HELP deriving (Show, Read)
-
-data Config = Config
-  { maxHistoryLength           :: Int
-  , historyPath                :: Text
-  , staticHistoryPath          :: Text
-  , imageCachePath             :: Text
-  , usePrimarySelectionAsInput :: Bool
-  , blacklistedApps            :: [Text]
-  , trimSpaceFromSelection     :: Bool
-  } deriving (Show, Read)
 
 type ClipHistory = Vector Clip.Selection
 
@@ -229,18 +220,13 @@ getConfig = do
 
   cfgStr <- readFile cfgPath `catchAll` const mempty
 
-  let unprettyCfg' = cfgStr & T.strip . T.replace "\n" "" . toS
-  let unprettyCfg = if "trimSpaceFromSelection" `T.isInfixOf` unprettyCfg'
-                      then unprettyCfg'
-                      else T.replace "}" ", trimSpaceFromSelection = True }" unprettyCfg'
-  let cfgMaybe = readMaybe $ toS unprettyCfg
-  let cfg = fromMaybe defaultConfig cfgMaybe
-
-  -- Write back the config file if the current one was invalid
-  _ <- if isNothing cfgMaybe || unprettyCfg /= unprettyCfg'
-        then let prettyCfg = show cfg & T.replace "," ",\n" . T.replace "{" "{\n " . T.replace "}" "\n}"
-             in writeFile cfgPath prettyCfg
-        else return ()
+  let parsedCfg = parseConfig cfgStr
+  cfg <- case parsedCfg of
+    -- Write back the config file if the current one was invalid
+    Left _ -> let prettyCfg = show defaultConfig
+                            & T.replace "," ",\n" . T.replace "{" "{\n " . T.replace "}" "\n}"
+              in writeFile cfgPath prettyCfg >> return defaultConfig
+    Right c -> return c
 
   historyPath' <- expandHomeDir $ cfg ^. to historyPath
   staticHistoryPath' <- expandHomeDir $ cfg ^. to staticHistoryPath
