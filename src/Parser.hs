@@ -20,6 +20,8 @@ import           Lens.Micro
 import           Control.Applicative.Combinators
 import           Control.Applicative.Permutations
 
+-- The Parser -----------------------------------------------------------------
+
 data Pos = Pos
          { line      :: Integer -- The line of the character
          , character :: Integer -- The position in the line of the character
@@ -89,7 +91,7 @@ instance Monad Parser where
 
 instance MonadPlus Parser where
 
--- The config parser ----------------------------------------------------------
+-- Parser configuration -------------------------------------------------------
 
 data PConfig = PC
              { maxHistoryLength           :: Maybe Int
@@ -124,20 +126,41 @@ trimSpaceFromSelectionLens :: Lens' PConfig (Maybe Bool)
 trimSpaceFromSelectionLens = lens trimSpaceFromSelection $ \pc b -> pc { trimSpaceFromSelection = b }
 
 data PConfigMemberParser where
-    PCMP :: forall a. Text -> Parser a -> Lens' PConfig (Maybe a) -> PConfigMemberParser
+    PCMP :: Parser a                -- How to parse the config option
+         -> Lens' PConfig (Maybe a) -- How to set it
+         -> Text                    -- The default name for this config option
+         -> [ Text ]                -- Aliases for the config option
+         -> Maybe a                 -- An eventual default value
+         -> PConfigMemberParser
 
 defPConfig :: PConfig
 defPConfig = PC Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 configOptions :: [PConfigMemberParser]
-configOptions = [ PCMP "maxHistoryLength"           intP            maxHistoryLengthLens
-                , PCMP "historyPath"                stringP         historyPathLens
-                , PCMP "staticHistoryPath"          stringP         staticHistoryPathLens
-                , PCMP "imageCachePath"             stringP         imageCachePathLens
-                , PCMP "usePrimarySelectionAsInput" boolP           usePrimarySelectionAsInputLens
-                , PCMP "blacklistedApps"            (listP stringP) blacklistedAppsLens
-                , PCMP "trimSpaceFromSelection"     boolP           trimSpaceFromSelectionLens
+configOptions = [ PCMP intP            maxHistoryLengthLens           "maxHistoryLength" 
+                       [ ]
+                       $ Just 50
+                , PCMP stringP         historyPathLens                "historyPath" 
+                       [ ]
+                       $ Just "~/.cache/greenclip.history"
+                , PCMP stringP         staticHistoryPathLens          "staticHistoryPath"
+                       [ ]
+                       $ Just "~/.cache/greenclip.staticHistory"
+                , PCMP stringP         imageCachePathLens             "imageCachePath"
+                       [ ]
+                       $ Just "/tmp/greenclip/"
+                , PCMP boolP           usePrimarySelectionAsInputLens "usePrimarySelectionAsInput"
+                       [ ]
+                       $ Just False
+                , PCMP (listP stringP) blacklistedAppsLens            "blacklistedApps"
+                       [ ]
+                       $ Just [ ]
+                , PCMP boolP           trimSpaceFromSelectionLens     "trimSpaceFromSelection"
+                       [ ]
+                       $ Just True
                 ]
+
+-- The Parser -----------------------------------------------------------------
 
 condP :: (Char -> Bool) -> Parser Char
 condP cond = getP >>= \r -> guard (cond r) >> return r
@@ -157,6 +180,12 @@ whiteP = void $ condP $ \c -> c == ' ' || c == '\t' || c == '\n' || c == '\r'
 whitesP :: Parser ()
 whitesP = skipMany $ tryP whiteP
 
+spaceP :: Parser ()
+spaceP = void $ condP $ \c -> c == ' ' || c == '\t'
+
+spacesP :: Parser ()
+spacesP = skipMany $ tryP spaceP
+
 charP :: Char -> Parser ()
 charP c = void $ condP (==c)
 
@@ -170,7 +199,7 @@ stringP = between open close $ T.pack <$> alphasP
           close :: Parser ()
           close = charP '"' >> whitesP
           alphasP :: Parser [Char]
-          alphasP = many $ tryP $ condP $ \c -> isPrint c && not (c == '"') 
+          alphasP = many $ tryP $ condP $ \c -> isPrint c && (c /= '"') 
 
 commaP :: Parser ()
 commaP = whitesP >> tryP (charP ',') >> whitesP
@@ -187,8 +216,8 @@ newlineP :: Parser ()
 newlineP = getP >>= \c -> guard (c == '\n')
 
 pcmpP :: PConfigMemberParser -> Parser (Endo PConfig)
-pcmpP (PCMP name parser lense) = do
-    textP name
+pcmpP (PCMP parser lense name aliases _) = do
+    foldl (\p alias -> p <|> tryP (textP alias)) (tryP $ textP name) aliases
     whitesP
     charP '='
     whitesP
@@ -196,15 +225,20 @@ pcmpP (PCMP name parser lense) = do
     return $ Endo $ \pc -> pc & lense ?~ r
 
 pcmpPerm :: PConfigMemberParser -> Permutation Parser (Endo PConfig)
-pcmpPerm pcmp = toPermutation $ tryP $ pcmpP pcmp
+pcmpPerm pcmp@(PCMP _ lense _ _ mdef) =
+    case mdef of
+      Nothing  -> toPermutation $ tryP $ pcmpP pcmp
+      Just def -> toPermutationWithDefault (mkDef def lense) $ tryP $ pcmpP pcmp
+  where mkDef :: a -> Lens' PConfig (Maybe a) -> Endo PConfig
+        mkDef df ls = Endo $ \pc -> pc & ls ?~ df
 
 optionsP :: [PConfigMemberParser] -> Permutation Parser (Endo PConfig)
 optionsP (hopt : topts) = foldl (\perm pcmp -> (<>) <$> pcmpPerm pcmp <*> perm)
                                 (pcmpPerm hopt) topts
 optionsP [] = toPermutation empty -- Won't happen
 
-configP :: Parser (Endo PConfig)
-configP = do
+oldConfigP :: Parser (Endo PConfig)
+oldConfigP = do
     textP "Config"
     whitesP
     result <- between (charP '{' >> whitesP) (whitesP >> charP '}')
@@ -212,6 +246,4 @@ configP = do
     whitesP
     eofP
     return result
-
-
 
