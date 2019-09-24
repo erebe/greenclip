@@ -11,11 +11,11 @@
 
 module Config (Config(..), Pos(..), parseConfig) where
 
-import           Protolude             hiding (readFile, to, (<&>), (&))
+import           Protolude                        hiding (readFile, to, (<&>), (&))
 
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.Text             as T
-import           Data.Char             (ord, isDigit, isPrint)
+import qualified Data.ByteString.Char8            as BS
+import qualified Data.Text                        as T
+import           Data.Char                        (ord, isDigit, isPrint)
 import           Lens.Micro
 import           Control.Applicative.Combinators
 import           Control.Applicative.Permutations
@@ -82,13 +82,13 @@ configOptions = [ PCMP intP            maxHistoryLengthLens           "maxHistor
                        [ ]
                        $ Just 50
                 , PCMP stringP         historyPathLens                "historyPath" 
-                       [ ]
+                       [ "historyFile" ]
                        $ Just "~/.cache/greenclip.history"
                 , PCMP stringP         staticHistoryPathLens          "staticHistoryPath"
-                       [ ]
+                       [ "staticHistoryFile" ]
                        $ Just "~/.cache/greenclip.staticHistory"
                 , PCMP stringP         imageCachePathLens             "imageCachePath"
-                       [ ]
+                       [ "imageCacheDirectory" ]
                        $ Just "/tmp/greenclip/"
                 , PCMP boolP           usePrimarySelectionAsInputLens "usePrimarySelectionAsInput"
                        [ ]
