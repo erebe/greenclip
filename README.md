@@ -58,19 +58,19 @@ or you can look at the .travis.yml file
 
 ## FAQ
 
-Q. Greenclip does not copy selection !
+Q. **Greenclip does not copy selection !**
 
 A. Greenclip cannot run alongside other clipboard manager. If you have already one activated (there is one by default in KDE), you have first to disable it before trying to run greenclip
 
 ---------
 
-Q. I cannot paste images !
+Q. **I cannot paste images !**
 
 A. You can only keep in your history small images  (~ <500 kb). I disabled the support for bigger images as it will turn your CPU into a heater for winter.
 
 ----------
 
-Q. I want to blacklist some applications !
+Q. **I want to blacklist some applications !**
 
 A. There is in your config file a section for blacklisting applications.
    You can run greenclip daemon in a terminal to find what is the name of the application who has the current selection.
@@ -79,7 +79,7 @@ A. There is in your config file a section for blacklisting applications.
 
 ----------
 
-Q. I want to paste selection directly after selecting them !
+Q. **I want to paste selection directly after selecting them !**
 
 A. This is not possible as when you invoke rofi, you lose focus of your current window and there is no way to find it back (from greenclip point of view)
    Nonetheless, you can emulate the feature with xdotool `rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}' ; sleep 0.5; xdotool type $(xclip -o -selection clipboard)`
@@ -88,6 +88,14 @@ A. This is not possible as when you invoke rofi, you lose focus of your current 
 
 ----------
 
-Q. I want to thank you for greenclip !
+Q. **I got a strange behavior when clearing the clipboard - greenclip clear**
+
+A. The command is not doing what it is supposed to do, if greenclip's daemon is running. You need to stop it first
+   Use this command to clear the history `pkill greenclip && greenclip clear && greenclip daemon &`
+   For more information regarding why, refer to https://github.com/erebe/greenclip/issues/34 
+
+----------
+
+Q. **I want to thank you for greenclip !**
 
 A. Give a star to this repository
