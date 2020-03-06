@@ -82,6 +82,7 @@ A. There is in your config file a section for blacklisting applications.
 Q. **I want to paste selection directly after selecting them !**
 
 A. This is not possible as when you invoke rofi, you lose focus of your current window and there is no way to find it back (from greenclip point of view)
+
    Nonetheless, you can emulate the feature with xdotool `rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}' ; sleep 0.5; xdotool type $(xclip -o -selection clipboard)`
 
    or look at this issue for a more complete solution https://github.com/erebe/greenclip/issues/27
@@ -90,8 +91,10 @@ A. This is not possible as when you invoke rofi, you lose focus of your current 
 
 Q. **I got a strange behavior when clearing the clipboard - greenclip clear**
 
-A. The command is not doing what it is supposed to do, if greenclip's daemon is running. You need to stop it first
+A. The command is not doing what it is supposed to do, if greenclip's daemon is running. You need to stop it first.
+
    Use this command to clear the history `pkill greenclip && greenclip clear && greenclip daemon &`
+   
    For more information regarding why, refer to https://github.com/erebe/greenclip/issues/34 
 
 ----------
