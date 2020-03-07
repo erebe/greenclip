@@ -98,10 +98,12 @@ A. The command is not doing what it is supposed to do, if greenclip's daemon is 
    For more information regarding why, refer to https://github.com/erebe/greenclip/issues/34 
 
 ----------
+
 Q. **How to have multi-line text in staticHistory**
 
 A. https://github.com/erebe/greenclip/issues/78
 
+----------
 
 Q. **I want to thank you for greenclip !**
 
