@@ -99,7 +99,7 @@ A. The command is not doing what it is supposed to do, if greenclip's daemon is 
 
 ----------
 
-Q. **How to have multi-line text in staticHistory**
+Q. **I need multi-line text in staticHistory**
 
 A. https://github.com/erebe/greenclip/issues/78
 
