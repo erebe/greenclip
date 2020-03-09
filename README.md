@@ -105,6 +105,16 @@ A. https://github.com/erebe/greenclip/issues/78
 
 ----------
 
+Q. **I don't want to use rofi !**
+
+A. You can also use greenclip with [dmenu](http://tools.suckless.org/dmenu) or [fzf](https://github.com/junegunn/fzf). Example usage:
+
+   `greenclip print | sed '/^$/d' | dmenu -i -l 10 -p clipboard | xargs -r -d'\n' -I '{}' greenclip print '{}'`
+
+   `greenclip print | sed '/^$/d' | fzf -e | xargs -r -d'\n' -I '{}' greenclip print '{}'`
+
+----------
+
 Q. **I want to thank you for greenclip !**
 
 A. Give a star to this repository
