@@ -271,7 +271,7 @@ run cmd = do
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
     COPY sel -> runReaderT (advertiseSelection sel) cfg
-    HELP     -> putText $ "greenclip v3.2 -- Recyle your clipboard selections\n\n" <>
+    HELP     -> putText $ "greenclip v3.3 -- Recyle your clipboard selections\n\n" <>
                           "Available commands\n" <>
                           "daemon: Spawn the daemon that will listen to selections\n" <>
                           "print:  Display all selections history\n" <>
