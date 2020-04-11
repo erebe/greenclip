@@ -12,7 +12,7 @@ module Main where
 import           Protolude             hiding (readFile, to, (<&>), (&))
 
 import           Control.Monad.Catch   (MonadCatch, catchAll)
-import           Data.Binary           (decode, encode)
+import           Data.Binary           (decodeFile, encode)
 import qualified Data.ByteString       as B
 import           Data.Hashable         (hash)
 import           Data.List             (dropWhileEnd)
@@ -55,9 +55,7 @@ readFile filepath = bracket (openFile filepath ReadMode) hClose $ \h -> do
 getHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
 getHistory = do
   storePath <- view $ to (toS . historyPath)
-  liftIO $ readH storePath `catchAll` const mempty
-  where
-    readH filePath = B.readFile filePath <&> V.fromList . decode . toS
+  liftIO $ (V.fromList <$> decodeFile storePath) `catchAll` const mempty
 
 
 getStaticHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
