@@ -41,6 +41,7 @@ data Config = Config
   , usePrimarySelectionAsInput :: Bool
   , blacklistedApps            :: [Text]
   , trimSpaceFromSelection     :: Bool
+  , enableImageSupport         :: Bool
   } deriving (Show, Read)
 
 type ClipHistory = Vector Clip.Selection
@@ -132,11 +133,12 @@ runDaemon = prepareDirs >> setHistoryFilePermission >> (forever $ go `catchAll` 
     go = do
       history <- getHistory
       usePrimary <- view $ to usePrimarySelectionAsInput
+      enableImage <- view $ to enableImageSupport
       cfg <- ask
 
       liftIO $ bracket Clip.getXorgContext Clip.destroyXorgContext $ \x11Context -> do
-        let getSelections = (getSelectionFrom (Clip.getClipboardSelection x11Context), Nothing)
-                          : [(getSelectionFrom (Clip.getPrimarySelection x11Context), Nothing) | usePrimary]
+        let getSelections = (getSelectionFrom (Clip.getClipboardSelection x11Context enableImage), Nothing)
+                          : [(getSelectionFrom (Clip.getPrimarySelection x11Context enableImage), Nothing) | usePrimary]
         void $ runReaderT (innerloop getSelections history) cfg
 
     getSelection [] = return ([], Nothing)
@@ -249,7 +251,7 @@ getConfig = do
                }
 
   where
-    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/greenclip/" False [] True
+    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/greenclip/" False [] True True
     expandHomeDir str = (toS . fromMaybe (toS str) . listToMaybe <$> wordexp (toS str)) `catchAll` (\_ -> return $ toS str)
 
 

@@ -52,7 +52,7 @@ data XorgContext = XorgContext {
 test :: IO ()
 test =
   bracket getXorgContext destroyXorgContext $ \ctx -> do
-    ret <- getPrimarySelection ctx
+    ret <- getPrimarySelection ctx True
     print $! ret
     return ()
 
@@ -123,17 +123,19 @@ getSupportedMimes ctx@XorgContext{..} clipboard =
             return $ Just retval
 
 
-getClipboardSelection :: XorgContext -> IO (Maybe Selection)
-getClipboardSelection ctx@XorgContext{..} =
-  getSelection ctx defaultClipboard
+getClipboardSelection :: XorgContext -> Bool -> IO (Maybe Selection)
+getClipboardSelection ctx@XorgContext{..} enableImage =
+  getSelection ctx enableImage defaultClipboard
 
-getPrimarySelection :: XorgContext -> IO (Maybe Selection)
-getPrimarySelection ctx@XorgContext{..} =
-  getSelection ctx primaryClipboard
+getPrimarySelection :: XorgContext -> Bool -> IO (Maybe Selection)
+getPrimarySelection ctx@XorgContext{..} enableImage =
+  getSelection ctx enableImage primaryClipboard
 
-getSelection :: XorgContext -> Atom -> IO (Maybe Selection)
-getSelection ctx@XorgContext{..} clipboard = do
-  mimes <- getSupportedMimes ctx clipboard
+getSelection :: XorgContext -> Bool -> Atom -> IO (Maybe Selection)
+getSelection ctx@XorgContext{..} enableImage clipboard = do
+  mimes <- if enableImage 
+            then getSupportedMimes ctx clipboard 
+            else return [defaultMime] 
   let targetMime = chooseSelectionType mimes
 
   xConvertSelection display clipboard targetMime selectionTarget ownWindow currentTime
@@ -182,7 +184,7 @@ getXorgContext = do
 
     clipboard <- internAtom display "CLIPBOARD" False
     selTarget <- internAtom display "GREENCLIP" False
-    priorities <- traverse (\atomName -> internAtom display atomName False) ["image/png", "image/jpeg", "image/bmp", "UTF8_STRING", "TEXT"]
+    priorities <- traverse (\atomName -> internAtom display atomName False) ["image/png", "image/jpeg", "image/bmp", "UTF8_STRING", "TEXT"] 
     defaultM <- internAtom display "UTF8_STRING" False
     return XorgContext {
         display = display
