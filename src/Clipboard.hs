@@ -8,18 +8,18 @@
 module Clipboard where
 
 import           Protolude                hiding ((<&>))
-import           Unsafe                   (unsafeIndex)
+import           Protolude.Unsafe                   (unsafeIndex)
+import qualified Protolude.Conv as StrConvOld
 
 import           Graphics.X11.Xlib
 import           Graphics.X11.Xlib.Extras
 
-import           Control.Concurrent       (threadDelay)
 import           Data.Binary              (Binary)
 import qualified Data.ByteString          as B
 import           Lens.Micro
 
 import           System.Directory         (setCurrentDirectory)
-import           System.IO                (hClose, stderr, stdin, stdout)
+import           System.IO                (hClose)
 import           System.Posix.Process     (forkProcess)
 
 import           Data.ByteString          (unpack)
@@ -161,7 +161,7 @@ getSelection ctx@XorgContext{..} clipboard = do
      if      mimeTarget == unsafeIndex mimesPriorities 0 then PNG selContent
      else if mimeTarget == unsafeIndex mimesPriorities 1 then JPEG selContent
      else if mimeTarget == unsafeIndex mimesPriorities 2 then BITMAP selContent
-     else UTF8 $ toS selContent
+     else UTF8 $ decodeUtf8 selContent
 
    -- getContentIncrementally acc = do
    --   _ <- xDeleteProperty display ownWindow selectionTarget
@@ -239,7 +239,7 @@ getContent :: SelectionType -> ByteString
 getContent (PNG bytes)    = bytes
 getContent (JPEG bytes)   = bytes
 getContent (BITMAP bytes) = bytes
-getContent (UTF8 txt)     = toS txt
+getContent (UTF8 txt)     = encodeUtf8 txt
 
 advertiseSelection :: XorgContext -> Selection ->  IO ()
 advertiseSelection ctx@XorgContext{..} sel = allocaXEvent (go [defaultClipboard, primaryClipboard])
@@ -265,12 +265,12 @@ advertiseSelection ctx@XorgContext{..} sel = allocaXEvent (go [defaultClipboard,
 handleRequest :: XorgContext -> SelectionType -> Window -> Atom -> Text -> IO Atom
 handleRequest XorgContext{..} sel requestorWindow selection "TARGETS" = do
   targets <- internAtom display "TARGETS" True
-  target <- internAtom display (toS $ selectionTypeToMime sel) True
+  target <- internAtom display (StrConvOld.toS $ selectionTypeToMime sel) True
   changeProperty32 display requestorWindow selection aTOM propModeReplace [fromIntegral targets, fromIntegral target]
   return selection
 
 handleRequest XorgContext{..} sel req prop targetStr =
-  if targetStr == toS (selectionTypeToMime sel)
+  if targetStr == decodeUtf8 (selectionTypeToMime sel)
     then do
       target <- internAtom display (toS targetStr) True
       void $ withArrayLen (byteStringToCUChars $ getContent sel) $ \len bytes ->

@@ -1,5 +1,4 @@
 FROM alpine:3.8 as builder
-MAINTAINER github@erebe.eu
 
 RUN apk --no-cache add --repository http://dl-cdn.alpinelinux.org/alpine/edge/community \
         ca-certificates git ghc=8.4.3-r0 upx curl musl-dev gmp-dev zlib-dev pcre-dev libx11-dev libxrandr-dev
@@ -23,7 +22,6 @@ RUN upx --ultra-brute /root/.local/bin/greenclip
 
 
 FROM alpine:3.8 as runner
-MAINTAINER github@erebe.eu
 
 WORKDIR /root
 COPY --from=builder /root/.local/bin/greenclip .

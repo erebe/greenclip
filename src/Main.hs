@@ -9,12 +9,12 @@
 
 module Main where
 
-import           Protolude             hiding (readFile, to, (<&>), (&))
+import           Protolude             hiding (readFile, to, (<&>), (&), toS)
+import           Protolude.Conv        (toS)
 
 import           Control.Monad.Catch   (MonadCatch, catchAll)
 import           Data.Binary           (decodeFile, encode)
 import qualified Data.ByteString       as B
-import           Data.Hashable         (hash)
 import           Data.List             (dropWhileEnd)
 import qualified Data.Text             as T
 import           Data.Vector           (Vector)
@@ -24,8 +24,7 @@ import           Lens.Micro.Mtl
 import qualified System.Directory      as Dir
 import           System.Posix.Files    (setFileMode)
 import           System.Environment    (lookupEnv)
-import           System.IO             (IOMode (..), hClose, hGetContents,
-                                        openFile)
+import           System.IO             (hClose, hGetContents)
 import           System.Timeout        (timeout)
 import           System.Wordexp.Simple (wordexp)
 
