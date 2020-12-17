@@ -19,7 +19,7 @@ COPY . /mnt
 RUN ar cru /usr/lib/libXss.a
 RUN echo '  ld-options: -static -Wl,--unresolved-symbols=ignore-all' >> greenclip.cabal ; \
     stack install --split-objs --ghc-options="-fPIC -fllvm"
-RUN upx --ultra-brute /root/.local/bin/greenclip
+#RUN upx --ultra-brute /root/.local/bin/greenclip
 
 
 
