@@ -24,7 +24,7 @@ jobs:
           tags: ghcr.io/erebe/greenclip:latest
       - name: extract Artifact
         run: |
-          docker run --rm -v $(pwd):/data ghcr.io/erebe/greenclip:latest /bin/cp /greenclip /data/
+          docker run --rm -v $(pwd):/data ghcr.io/erebe/greenclip:latest /bin/cp ./greenclip /data/
           ./greenclip
 
       - uses: actions/upload-artifact@v1
