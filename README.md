@@ -4,7 +4,7 @@
 
 ## Description
 
-Recyle your clipboard selections with greenclip and don't waste your time anymore
+Recycle your clipboard selections with greenclip and don't waste your time anymore
 to reselect things over and over.
 
 **Purpose:**
