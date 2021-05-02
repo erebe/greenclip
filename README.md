@@ -40,7 +40,6 @@ Configuration file can be found at:
 
 [greenclip]
   history_file = "/home/erebe/.cache/greenclip.history"
-  static_history_file = "/home/erebe/.cache/greenclip.staticHistory"
   max_history_length = 50
   max_selection_size_bytes = 0
   trim_space_from_selection = true
@@ -48,6 +47,9 @@ Configuration file can be found at:
   blacklisted_applications = []
   enable_image_support = true
   image_cache_directory = "/tmp/greenclip"
+  static_history = [
+ '''¯\_(ツ)_/¯''',
+]
 ```
 
 ## Usage
