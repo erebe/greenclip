@@ -20,13 +20,17 @@ import qualified Data.Text             as T
 import           Data.Vector           (Vector)
 import qualified Data.Vector           as V
 import           Lens.Micro
-import           Lens.Micro.Mtl
+import           Lens.Micro.Mtl    hiding ((.=))
 import qualified System.Directory      as Dir
 import           System.Posix.Files    (setFileMode)
 import           System.Environment    (lookupEnv)
 import           System.IO             (hClose, hGetContents)
 import           System.Timeout        (timeout)
 import           System.Wordexp.Simple (wordexp)
+import           System.Posix.Temp     (mkdtemp)
+
+import Toml (TomlCodec, (.=))
+import qualified Toml
 
 import qualified Clipboard             as Clip
 
@@ -43,6 +47,19 @@ data Config = Config
   , trimSpaceFromSelection     :: Bool
   , enableImageSupport         :: Bool
   } deriving (Show, Read)
+
+configCodec :: TomlCodec Config
+configCodec = Config
+    <$> Toml.int "max_history_length"  .= maxHistoryLength
+    <*> Toml.text "history_file" .= historyPath
+    <*> Toml.text "static_history_file" .= staticHistoryPath
+    <*> Toml.text "image_cache_directory" .= imageCachePath
+    <*> Toml.bool "use_primary_selection_as_input" .= usePrimarySelectionAsInput
+    <*> Toml.arrayOf Toml._Text  "blacklisted_applications" .= blacklistedApps
+    <*> Toml.bool "trim_space_from_selection" .= trimSpaceFromSelection
+    <*> Toml.bool "enable_image_support" .= enableImageSupport
+
+
 
 type ClipHistory = Vector Clip.Selection
 
@@ -224,35 +241,34 @@ advertiseSelection txt = do
 getConfig :: IO Config
 getConfig = do
   home <- Dir.getHomeDirectory
-  let cfgPath = home <> "/.config/greenclip.cfg"
-
-  cfgStr <- readFile cfgPath `catchAll` const mempty
-
-  let unprettyCfg' = cfgStr & T.strip . T.replace "\n" "" . toS
-  let unprettyCfg = if "trimSpaceFromSelection" `T.isInfixOf` unprettyCfg'
-                      then unprettyCfg'
-                      else T.replace "}" ", trimSpaceFromSelection = True }" unprettyCfg'
-  let cfgMaybe = readMaybe $ toS unprettyCfg
-  let cfg = fromMaybe defaultConfig cfgMaybe
-
-  -- Write back the config file if the current one was invalid
-  _ <- if isNothing cfgMaybe || unprettyCfg /= unprettyCfg'
-        then let prettyCfg = show cfg & T.replace "," ",\n" . T.replace "{" "{\n " . T.replace "}" "\n}"
-             in writeFile cfgPath prettyCfg
-        else return ()
-
-  historyPath' <- expandHomeDir $ cfg ^. to historyPath
-  staticHistoryPath' <- expandHomeDir $ cfg ^. to staticHistoryPath
-  imageCachePath' <- expandHomeDir $ cfg ^. to imageCachePath
-
-  return $ cfg { historyPath = historyPath'
-               , staticHistoryPath = staticHistoryPath'
-               , imageCachePath = imageCachePath'
-               }
+  let configPath = home <> "/.config/greenclip.toml"
+  
+  configExist <- Dir.doesFileExist configPath
+  when (not configExist) $ do 
+    config <- Toml.encode (Toml.table configCodec "greenclip") <$> defaultConfig
+    writeFile configPath config
+    return ()
+  
+  tomlRes <- Toml.decodeFileEither (Toml.table configCodec "greenclip") configPath
+  when (isLeft tomlRes) $ do
+    die . toS $  "Error parsing the config file at " <> (show configPath) <> "\n" <> Toml.prettyTomlDecodeErrors (fromLeft mempty tomlRes)
+  
+  let cfg = fromRight (Config 50 "" "" "" False [] True True) tomlRes 
+  
+  -- if it ends with / we don't create a temp directory
+  -- user is responsible for it
+  cfg' <- if (lastDef ' ' (toS $ imageCachePath cfg) /= '/') 
+      then do
+        dirPath <- mkdtemp $ (toS $ imageCachePath cfg)
+        return $ cfg { imageCachePath = toS dirPath }
+      else return cfg
+     
+  return cfg'
 
   where
-    defaultConfig = Config 50 "~/.cache/greenclip.history" "~/.cache/greenclip.staticHistory" "/tmp/greenclip/" False [] True True
-    expandHomeDir str = (toS . fromMaybe (toS str) . listToMaybe <$> wordexp (toS str)) `catchAll` (\_ -> return $ toS str)
+    defaultConfig = do 
+      homeDir <- toS . fromMaybe mempty . listToMaybe <$> wordexp "~/"
+      return $ Config 50 (homeDir <> ".cache/greenclip.history") (homeDir <> ".cache/greenclip.staticHistory" ) "/tmp/greenclip" False [] True True
 
 
 parseArgs :: [Text] -> Command
@@ -272,7 +288,7 @@ run cmd = do
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
     COPY sel -> runReaderT (advertiseSelection sel) cfg
-    HELP     -> putText $ "greenclip v3.4 -- Recycle your clipboard selections\n\n" <>
+    HELP     -> putText $ "greenclip v4.0 -- Recyle your clipboard selections\n\n" <>
                           "Available commands\n" <>
                           "daemon: Spawn the daemon that will listen to selections\n" <>
                           "print:  Display all selections history\n" <>

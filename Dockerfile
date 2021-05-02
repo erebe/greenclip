@@ -1,6 +1,6 @@
 FROM alpine:3.12 as builder
 
-RUN apk --no-cache add --repository http://dl-cdn.alpinelinux.org/alpine/edge/community \
+RUN apk --no-cache add --repository http://dl-cdn.alpinelinux.org/alpine/v3.13/community \
         ca-certificates git ghc=8.8.4-r0 upx curl musl-dev gmp-dev zlib-dev pcre-dev libx11-dev libxcb-dev libxrandr-dev libx11-static libxcb-static libxscrnsaver-dev
 RUN  curl -sSL https://github.com/commercialhaskell/stack/releases/download/v2.1.3/stack-2.1.3-linux-x86_64-static.tar.gz | tar xvz && \
     mv stack*/stack /usr/bin

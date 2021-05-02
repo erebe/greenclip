@@ -3,7 +3,7 @@
 -- see: https://github.com/sol/hpack
 
 name:           greenclip
-version:        3.4.0
+version:        4.0.0
 synopsis:       Simple clipboard manager to be integrated with rofi
 description:    Simple clipboard manager to be integrated with rofi - Please see README.md
 category:       Linux Desktop
@@ -39,6 +39,7 @@ executable greenclip
     , unix
     , directory
     , wordexp
+    , tomland
     , X11 >= 1.6
   other-modules:
       Clipboard
