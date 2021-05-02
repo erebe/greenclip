@@ -16,8 +16,8 @@ Keeps track of your history of selections to quickly switch between them
 
 **Features:**
   + Integrated with [rofi](https://github.com/DaveDavenport/rofi)
-  + Permanently set some selections to added at the end (set `staticHistoryPath = your/file/with/static/entries` in the config file)
-  + Merge X Primary selection with clipboard selection (set `usePrimarySelectionAsInput = True` in the config file)
+  + Permanently set some selections to added at the end (set `static_history_file = your/file/with/static/entries` in the config file)
+  + Merge X Primary selection with clipboard selection (set `use_primary_selection_as_input = true` in the config file)
   + Blacklist some applications (see `I want to blacklist some applications !` in the FAQ section)
   + Copy small images (you can disable it in the config)
 
@@ -33,6 +33,21 @@ Alternatively if you are using Archlinux you can install the package from AUR
 
 PS: If you want, you can add a permanent list of selections to be added to your current history. Go see the config file
 
+Configuration file can be found at: 
+```
+❯ cat ~/.config/greenclip.toml
+
+[greenclip]
+  blacklisted_applications = []
+  enable_image_support = true
+  history_file = "/home/erebe/.cache/greenclip.history"
+  image_cache_directory = "/tmp/greenclip"
+  max_history_length = 50
+  max_selection_size_bytes = 0
+  static_history_file = "/home/erebe/.cache/greenclip.staticHistory"
+  trim_space_from_selection = true
+  use_primary_selection_as_input = false
+```
 
 ## Usage
 
