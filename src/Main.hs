@@ -41,12 +41,12 @@ data Config = Config
   { maxHistoryLength           :: Int
   , maxItemSizeBytes           :: Int
   , historyPath                :: Text
-  , staticHistoryPath          :: Text
   , imageCachePath             :: Text
   , usePrimarySelectionAsInput :: Bool
   , blacklistedApps            :: [Text]
   , trimSpaceFromSelection     :: Bool
   , enableImageSupport         :: Bool
+  , staticHistory              :: [Text]
   } deriving (Show, Read)
 
 configCodec :: TomlCodec Config
@@ -54,13 +54,12 @@ configCodec = Config
     <$> Toml.int "max_history_length"  .= maxHistoryLength
     <*> Toml.int "max_selection_size_bytes" .= maxItemSizeBytes
     <*> Toml.text "history_file" .= historyPath
-    <*> Toml.text "static_history_file" .= staticHistoryPath
     <*> Toml.text "image_cache_directory" .= imageCachePath
     <*> Toml.bool "use_primary_selection_as_input" .= usePrimarySelectionAsInput
     <*> Toml.arrayOf Toml._Text  "blacklisted_applications" .= blacklistedApps
     <*> Toml.bool "trim_space_from_selection" .= trimSpaceFromSelection
     <*> Toml.bool "enable_image_support" .= enableImageSupport
-
+    <*> Toml.arrayOf Toml._Text  "static_history" .= staticHistory
 
 
 type ClipHistory = Vector Clip.Selection
@@ -79,11 +78,9 @@ getHistory = do
 
 getStaticHistory :: (MonadIO m, MonadReader Config m) => m ClipHistory
 getStaticHistory = do
-  storePath <- view $ to (toS . staticHistoryPath)
-  liftIO $ readH storePath `catchAll` const mempty
-  where
-    readH filePath = readFile filePath <&> V.fromList . fmap toSelection . T.lines . toS
-    toSelection txt = Clip.Selection "greenclip" (Clip.UTF8 txt)
+  history <- view $ to (staticHistory)
+  return . V.fromList $ Clip.Selection "greenclip" . Clip.UTF8 <$> history
+
 
 
 storeHistory :: (MonadIO m, MonadReader Config m) => ClipHistory -> m ()
@@ -263,7 +260,7 @@ getConfig = do
   when (isLeft tomlRes) $ do
     die . toS $  "Error parsing the config file at " <> (show configPath) <> "\n" <> Toml.prettyTomlDecodeErrors (fromLeft mempty tomlRes)
   
-  let cfg = fromRight (Config 50 0 "" "" "" False [] True True) tomlRes 
+  let cfg = fromRight (Config 50 0 "" "" False [] True True []) tomlRes 
   
   -- if it ends with / we don't create a temp directory
   -- user is responsible for it
@@ -278,7 +275,7 @@ getConfig = do
   where
     defaultConfig = do 
       homeDir <- toS . fromMaybe mempty . listToMaybe <$> wordexp "~/"
-      return $ Config 50 0 (homeDir <> ".cache/greenclip.history") (homeDir <> ".cache/greenclip.staticHistory" ) "/tmp/greenclip" False [] True True
+      return $ Config 50 0 (homeDir <> ".cache/greenclip.history") "/tmp/greenclip" False [] True True []
 
 
 parseArgs :: [Text] -> Command
