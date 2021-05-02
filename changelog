@@ -1,3 +1,9 @@
+4.0
+ * Switch config file format to toml
+ * Add an option to limit the size of the clipboard entries
+ * Inline static history inside the config file
+ * Do not override config file at startup
+
 3.2
   * Add option to not trim space from selection
 
