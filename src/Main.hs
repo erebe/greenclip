@@ -39,6 +39,7 @@ data Command = DAEMON | PRINT | COPY Text | CLEAR | HELP deriving (Show, Read)
 
 data Config = Config
   { maxHistoryLength           :: Int
+  , maxItemSizeBytes           :: Int
   , historyPath                :: Text
   , staticHistoryPath          :: Text
   , imageCachePath             :: Text
@@ -51,6 +52,7 @@ data Config = Config
 configCodec :: TomlCodec Config
 configCodec = Config
     <$> Toml.int "max_history_length"  .= maxHistoryLength
+    <*> Toml.int "max_item_size_bytes" .= maxItemSizeBytes
     <*> Toml.text "history_file" .= historyPath
     <*> Toml.text "static_history_file" .= staticHistoryPath
     <*> Toml.text "image_cache_directory" .= imageCachePath
@@ -168,8 +170,16 @@ runDaemon = prepareDirs >> setHistoryFilePermission >> (forever $ go `catchAll` 
     innerloop :: (MonadIO m, MonadReader Config m) => [(IO (Maybe Clip.Selection), Maybe Clip.Selection)] -> ClipHistory -> m ClipHistory
     innerloop getSelections history = do
       -- Get selection from enabled clipboards
-      (getSelections', sel) <- liftIO $ getSelection getSelections
+      (getSelections', rawSelection) <- liftIO $ getSelection getSelections
 
+      -- Do not store selection items above threshold size
+      maxItemSize <- view (to maxItemSizeBytes)
+      let sel = case rawSelection of
+            Nothing -> Nothing
+            Just selection -> if maxItemSize > 0 && Clip.selectionLength selection >= maxItemSize
+                              then Nothing
+                              else Just selection
+             
       -- Do not use selection coming from blacklisted app
       liftIO $ when (isJust sel) (print (Clip.appName <$> sel))
       blacklist <- view (to blacklistedApps)
@@ -253,7 +263,7 @@ getConfig = do
   when (isLeft tomlRes) $ do
     die . toS $  "Error parsing the config file at " <> (show configPath) <> "\n" <> Toml.prettyTomlDecodeErrors (fromLeft mempty tomlRes)
   
-  let cfg = fromRight (Config 50 "" "" "" False [] True True) tomlRes 
+  let cfg = fromRight (Config 50 0 "" "" "" False [] True True) tomlRes 
   
   -- if it ends with / we don't create a temp directory
   -- user is responsible for it
@@ -268,7 +278,7 @@ getConfig = do
   where
     defaultConfig = do 
       homeDir <- toS . fromMaybe mempty . listToMaybe <$> wordexp "~/"
-      return $ Config 50 (homeDir <> ".cache/greenclip.history") (homeDir <> ".cache/greenclip.staticHistory" ) "/tmp/greenclip" False [] True True
+      return $ Config 50 0 (homeDir <> ".cache/greenclip.history") (homeDir <> ".cache/greenclip.staticHistory" ) "/tmp/greenclip" False [] True True
 
 
 parseArgs :: [Text] -> Command

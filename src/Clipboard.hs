@@ -16,6 +16,7 @@ import           Graphics.X11.Xlib.Extras
 
 import           Data.Binary              (Binary)
 import qualified Data.ByteString          as B
+import qualified Data.Text as T
 import           Lens.Micro
 
 import           System.Directory         (setCurrentDirectory)
@@ -33,6 +34,13 @@ data SelectionType = UTF8 Text
                    | BITMAP ByteString
                    deriving (Show, Eq, Generic, Binary)
 
+selectionLength :: Selection -> Int
+selectionLength (Selection _ (UTF8 a)) = T.length a
+selectionLength (Selection _ (PNG a)) = B.length a
+selectionLength (Selection _ (JPEG a)) = B.length a
+selectionLength (Selection _ (BITMAP a)) = B.length a
+
+
 data Selection = Selection {
     appName   :: Text
   , selection :: SelectionType
@@ -47,7 +55,6 @@ data XorgContext = XorgContext {
   , mimesPriorities  :: [Atom]
   , defaultMime      :: Atom
 } deriving (Show)
-
 
 test :: IO ()
 test =
