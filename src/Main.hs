@@ -275,7 +275,8 @@ getConfig = do
   where
     defaultConfig = do 
       homeDir <- toS . fromMaybe mempty . listToMaybe <$> wordexp "~/"
-      return $ Config 50 0 (homeDir <> ".cache/greenclip.history") "/tmp/greenclip" False [] True True []
+      return $ Config 50 0 (homeDir <> ".cache/greenclip.history") "/tmp/greenclip" False [] True True 
+        ["Greenclip has been updated to v4.0, update your new config file at ~/.config/greenclip.toml"]
 
 
 parseArgs :: [Text] -> Command
