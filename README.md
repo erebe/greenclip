@@ -23,11 +23,12 @@ Keeps track of your history of selections to quickly switch between them
 
 ## Installation
 
-1. It's a static binary so drop it anywhere in your $PATH env
+- It's a static binary so drop it anywhere in your $PATH env
 
 ```wget https://github.com/erebe/greenclip/releases/download/4.0/greenclip```
 
-Alternatively if you are using Archlinux you can install the package from AUR
+
+- Alternatively if you are using Archlinux you can install the package from AUR
 
 ``yay rofi-greenclip``
 
