@@ -1,3 +1,4 @@
+
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -262,15 +263,21 @@ getConfig = do
   
   let cfg = fromRight (Config 50 0 "" "" False [] True True []) tomlRes 
   
+  -- Replace $HOME|~|*... in config path
+  cfg <- do
+    imgCachePath <- wordexp . toS $ imageCachePath cfg
+    historyP <- wordexp . toS $ historyPath cfg 
+    return $ cfg { imageCachePath = (toS $ headDef "" imgCachePath), historyPath = (toS $ headDef "" historyP)}
+    
   -- if it ends with / we don't create a temp directory
   -- user is responsible for it
-  cfg' <- if (lastDef ' ' (toS $ imageCachePath cfg) /= '/') 
+  cfg <- if (lastDef ' ' (toS $ imageCachePath cfg) /= '/') 
       then do
         dirPath <- mkdtemp $ (toS $ imageCachePath cfg)
         return $ cfg { imageCachePath = toS dirPath }
       else return cfg
      
-  return cfg'
+  return cfg
 
   where
     defaultConfig = do 
