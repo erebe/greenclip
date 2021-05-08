@@ -283,7 +283,7 @@ getConfig = do
     defaultConfig = do 
       homeDir <- toS . fromMaybe mempty . listToMaybe <$> wordexp "~/"
       return $ Config 50 0 (homeDir <> ".cache/greenclip.history") "/tmp/greenclip" False [] True True 
-        ["Greenclip has been updated to v4.0, update your new config file at ~/.config/greenclip.toml"]
+        ["Greenclip has been updated to v4.1, update your new config file at ~/.config/greenclip.toml"]
 
 
 parseArgs :: [Text] -> Command
@@ -303,7 +303,7 @@ run cmd = do
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
     COPY sel -> runReaderT (advertiseSelection sel) cfg
-    HELP     -> putText $ "greenclip v4.0 -- Recyle your clipboard selections\n\n" <>
+    HELP     -> putText $ "greenclip v4.1 -- Recyle your clipboard selections\n\n" <>
                           "Available commands\n" <>
                           "daemon: Spawn the daemon that will listen to selections\n" <>
                           "print:  Display all selections history\n" <>
