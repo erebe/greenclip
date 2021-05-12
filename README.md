@@ -16,7 +16,7 @@ Keeps track of your history of selections to quickly switch between them
 
 **Features:**
   + Integrated with [rofi](https://github.com/DaveDavenport/rofi)
-  + Permanently set some selections to added at the end (set `static_history_file = your/file/with/static/entries` in the config file)
+  + Permanently set some selections to added at the end (set `static_history = ["your/file/with/static/entries"]` in the config file)
   + Merge X Primary selection with clipboard selection (set `use_primary_selection_as_input = true` in the config file)
   + Blacklist some applications (see `I want to blacklist some applications !` in the FAQ section)
   + Copy small images (you can disable it in the config)
@@ -49,7 +49,7 @@ Configuration file can be found at:
   # path without ending / will generate mktemp directory at the prefix location
   image_cache_directory = "/tmp/greenclip"
   static_history = [
- '''¯\_(ツ)_/¯''',
+ "your/file/with/static/entries",
 ]
 ```
 
