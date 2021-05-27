@@ -28,7 +28,7 @@ import           System.Environment    (lookupEnv)
 import           System.IO             (hClose, hGetContents)
 import           System.Timeout        (timeout)
 import           System.Wordexp.Simple (wordexp)
-import           System.Posix.Temp     (mkdtemp)
+--import           System.Posix.Temp     (mkdtemp)
 
 import Toml (TomlCodec, (.=))
 import qualified Toml
@@ -271,11 +271,11 @@ getConfig = do
     
   -- if it ends with / we don't create a temp directory
   -- user is responsible for it
-  cfg <- if (lastDef ' ' (toS $ imageCachePath cfg) /= '/') 
-      then do
-        dirPath <- mkdtemp $ (toS $ imageCachePath cfg)
-        return $ cfg { imageCachePath = toS dirPath }
-      else return cfg
+  -- cfg <- if (lastDef ' ' (toS $ imageCachePath cfg) /= '/')
+  --    then do
+  --      dirPath <- mkdtemp $ (toS $ imageCachePath cfg)
+  --      return $ cfg { imageCachePath = toS dirPath }
+  --    else return cfg
      
   return cfg
 
@@ -303,7 +303,7 @@ run cmd = do
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
     COPY sel -> runReaderT (advertiseSelection sel) cfg
-    HELP     -> putText $ "greenclip v4.1 -- Recyle your clipboard selections\n\n" <>
+    HELP     -> putText $ "greenclip v4.2 -- Recyle your clipboard selections\n\n" <>
                           "Available commands\n" <>
                           "daemon: Spawn the daemon that will listen to selections\n" <>
                           "print:  Display all selections history\n" <>
