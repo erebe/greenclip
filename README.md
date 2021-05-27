@@ -46,7 +46,6 @@ Configuration file can be found at:
   use_primary_selection_as_input = false
   blacklisted_applications = []
   enable_image_support = true
-  # path without ending / will generate mktemp directory at the prefix location
   image_cache_directory = "/tmp/greenclip"
   static_history = [
  '''¯\_(ツ)_/¯''',
