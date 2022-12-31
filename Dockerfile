@@ -11,7 +11,7 @@ COPY *.cabal /mnt
 WORKDIR /mnt
 RUN rm -rf ~/.stack &&  \
     stack config set system-ghc --global true && \
-    stack setup && \
+    stack setup --no-reinstall && \
     stack install --split-objs --ghc-options="-fPIC -fllvm" --only-dependencies
 
 COPY . /mnt
