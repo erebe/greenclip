@@ -1,7 +1,7 @@
 FROM alpine:3.16 as builder
 
 RUN apk --no-cache add ca-certificates git ghc upx curl llvm13 llvm13-dev musl-dev gmp-dev zlib-dev pcre-dev libx11-dev libxcb-dev libxrandr-dev libx11-static libxcb-static libxscrnsaver-dev
-RUN apk --no-cache add --repository http://dl-cdn.alpinelinux.org/alpine/v3.17/community ghc=9.0.2-r1
+RUN apk --no-cache add --repository http://dl-cdn.alpinelinux.org/alpine/v3.17/community ghc
 
 RUN  curl -sSL https://github.com/commercialhaskell/stack/releases/download/v2.9.3/stack-2.9.3-linux-x86_64-static.tar.gz | tar xvz && \
     mv stack*/stack /usr/bin
