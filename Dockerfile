@@ -17,7 +17,7 @@ RUN rm -rf ~/.stack &&  \
 COPY . /mnt
 
 # Hack as no Xss static lib on alpine, we don't need it
-RUN ar cru /usr/lib/libXss.a
+RUN ar cru /usr/lib/libXss.a ; ar cru /usr/lib/libXrandr.a
 RUN echo '  ld-options: -static -Wl,--unresolved-symbols=ignore-all' >> greenclip.cabal ; \
     stack config set system-ghc --global true && \
     sed -i 's/lts-20.0/lts-19.33/g' stack.yaml && \
