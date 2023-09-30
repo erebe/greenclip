@@ -59,7 +59,7 @@ Greenclip is intended to be used with [rofi](https://github.com/DaveDavenport/ro
 1. Spawn the daemon ``` greenclip daemon ```
 2. When ever you need to get your selections history ``` rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}' ```
 3. The entry that you have selected will be in your clipboard now
-4. Configuration file can be found in ```.config/greenclip.cfg```
+4. Configuration file can be found in ```.config/greenclip.toml```
 
 ## Migrating from 2.x version to 3.x one
 
