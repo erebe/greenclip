@@ -27,7 +27,7 @@ jobs:
           docker run --rm -v $(pwd):/data ghcr.io/erebe/greenclip:latest /bin/cp ./greenclip /data/
           ./greenclip
 
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v4
         with:
           name: greenclip
           path: greenclip
