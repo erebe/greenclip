@@ -14,10 +14,14 @@ import           Protolude             hiding (readFile, to, (<&>), (&), toS)
 import           Protolude.Conv        (toS)
 
 import           Control.Monad.Catch   (MonadCatch, catchAll)
+import qualified Crypto.Hash.MD5       as H
 import           Data.Binary           (decodeFile, encode)
 import qualified Data.ByteString       as B
+import qualified Data.ByteString.Base16 as BB
+import qualified Data.ByteString.Char8 as BC
 import           Data.List             (dropWhileEnd)
 import qualified Data.Text             as T
+import qualified Data.Text.Encoding    as TE
 import           Data.Vector           (Vector)
 import qualified Data.Vector           as V
 import           Lens.Micro
@@ -36,7 +40,7 @@ import qualified Toml
 import qualified Clipboard             as Clip
 
 
-data Command = DAEMON | PRINT | COPY Text | CLEAR | HELP deriving (Show, Read)
+data Command = DAEMON | PRINT | COPY Text | CLEAR | PRUNE FilePath | HELP deriving (Show, Read)
 
 data Config = Config
   { maxHistoryLength           :: Int
@@ -90,6 +94,17 @@ storeHistory history = do
   liftIO $ writeH storePath history
   where
     writeH storePath = B.writeFile storePath . toS . encode . V.toList
+
+
+pruneHistory :: (MonadIO m, MonadReader Config m) => FilePath -> m ()
+pruneHistory path = do
+  targets <- liftIO $ BC.lines <$> readFile path
+  history <- getHistory
+  storeHistory $ V.filter (go targets) history
+  where
+    go ts (Clip.Selection _ (Clip.UTF8 x)) = hashText x `notElem` ts
+    go _  _                                = False
+    hashText = BB.encode . H.hash . TE.encodeUtf8
 
 
 appendToHistory :: (MonadIO m, MonadReader Config m) => Clip.Selection -> ClipHistory -> m (ClipHistory, ClipHistory)
@@ -289,6 +304,7 @@ getConfig = do
 parseArgs :: [Text] -> Command
 parseArgs ("daemon":_)   = DAEMON
 parseArgs ["clear"]      = CLEAR
+parseArgs ["prune", p]   = PRUNE $ T.unpack p
 parseArgs ["print"]      = PRINT
 parseArgs ["print", sel] = COPY sel
 parseArgs _              = HELP
@@ -300,6 +316,7 @@ run cmd = do
     DAEMON   -> runReaderT runDaemon cfg
     PRINT    -> runReaderT printHistoryForRofi cfg
     CLEAR    -> runReaderT (storeHistory mempty) cfg
+    PRUNE p  -> runReaderT (pruneHistory p) cfg
     -- Should rename COPY into ADVERTISE but as greenclip is already used I don't want to break configs
     -- of other people
     COPY sel -> runReaderT (advertiseSelection sel) cfg
@@ -307,6 +324,7 @@ run cmd = do
                           "Available commands\n" <>
                           "daemon: Spawn the daemon that will listen to selections\n" <>
                           "print:  Display all selections history\n" <>
+                          "prune FILE: Remove selections in list of md5 hashes in FILE\n" <>
                           "clear:  Clear history\n" <>
                           "help:   Display this message\n"
 

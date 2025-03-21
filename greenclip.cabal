@@ -40,6 +40,8 @@ executable greenclip
     , directory
     , wordexp
     , tomland
+    , base16-bytestring
+    , cryptohash-md5
     , X11 >= 1.6
   other-modules:
       Clipboard
